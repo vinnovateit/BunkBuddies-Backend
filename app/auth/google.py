@@ -9,11 +9,15 @@ GOOGLE_USERINFO_URI = "https://www.googleapis.com/oauth2/v2/userinfo"
 GOOGLE_SCOPES = "openid email profile"
 
 
-async def get_authorization_url() -> tuple[str, str]:
+def _resolve_redirect_uri(redirect_uri: str | None = None) -> str:
+    return redirect_uri or settings.google_redirect_uri
+
+
+async def get_authorization_url(redirect_uri: str | None = None) -> tuple[str, str]:
     client = AsyncOAuth2Client(
         client_id=settings.google_client_id,
         client_secret=settings.google_client_secret,
-        redirect_uri=settings.google_redirect_uri,
+        redirect_uri=_resolve_redirect_uri(redirect_uri),
         scope=GOOGLE_SCOPES,
     )
     authorization_url, state = client.create_authorization_url(
@@ -26,11 +30,11 @@ async def get_authorization_url() -> tuple[str, str]:
     return authorization_url, state
 
 
-async def fetch_google_user_info(code: str) -> dict:
+async def fetch_google_user_info(code: str, redirect_uri: str | None = None) -> dict:
     client = AsyncOAuth2Client(
         client_id=settings.google_client_id,
         client_secret=settings.google_client_secret,
-        redirect_uri=settings.google_redirect_uri,
+        redirect_uri=_resolve_redirect_uri(redirect_uri),
         scope=GOOGLE_SCOPES,
     )
     try:

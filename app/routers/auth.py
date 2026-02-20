@@ -35,6 +35,10 @@ def _extract_name(user_info: dict) -> str:
     return email.split("@")[0] if email else ""
 
 
+def _validate_redirect_uri(redirect_uri: str | None) -> str | None:
+    if redirect_uri and not redirect_uri.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Invalid redirect_uri")
+    return redirect_uri
 
 
 @router.get("/meDetails")
@@ -67,9 +71,12 @@ async def get_signed_in_details(
 
 
 @router.get("/login")
-async def google_login():
+async def google_login(
+    redirect_uri: str | None = Query(default=None),
+):
     """Initiate Google OAuth login"""
-    authorization_url, state = await get_authorization_url()
+    redirect_uri = _validate_redirect_uri(redirect_uri)
+    authorization_url, state = await get_authorization_url(redirect_uri=redirect_uri)
     # In production, store state in session/cache for security
     return {"authorization_url": authorization_url, "state": state}
 
@@ -77,11 +84,13 @@ async def google_login():
 @router.get("/callback")
 async def google_callback(
     code: str = Query(...),
-    state: str = Query(...)
+    state: str = Query(...),
+    redirect_uri: str | None = Query(default=None),
 ):
     """Google OAuth callback"""
     try:
-        user_info = await fetch_google_user_info(code)
+        redirect_uri = _validate_redirect_uri(redirect_uri)
+        user_info = await fetch_google_user_info(code, redirect_uri=redirect_uri)
         email = (user_info.get("email") or "").strip()
         name = _extract_name(user_info)
         reg_no = _extract_reg_no_from_email(email)
@@ -164,6 +173,6 @@ async def get_current_user(
     """Get current user info from token"""
     from fastapi.security import HTTPBearer, HTTPAuthenticationCredentials
     from fastapi import Header
-    
+
     # This is a simplified version. Implement proper Bearer token extraction
     raise HTTPException(status_code=401, detail="Not authenticated")
