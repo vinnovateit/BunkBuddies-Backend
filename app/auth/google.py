@@ -20,6 +20,7 @@ async def get_authorization_url() -> tuple[str, str]:
         GOOGLE_AUTH_URI,
         access_type="offline",
         include_granted_scopes="true",
+        hd="vitstudent.ac.in"
     )
     await client.aclose()
     return authorization_url, state

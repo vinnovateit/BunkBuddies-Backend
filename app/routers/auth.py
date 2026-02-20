@@ -85,13 +85,17 @@ async def google_callback(
         email = (user_info.get("email") or "").strip()
         name = _extract_name(user_info)
         reg_no = _extract_reg_no_from_email(email)
-        
+
+        # Restrict to @vitstudent.ac.in emails only
+        if not email.lower().endswith("@vitstudent.ac.in"):
+            raise HTTPException(status_code=403, detail="Only @vitstudent.ac.in email addresses are allowed.")
+
         # Get or create user
         db = get_database()
         user_service = UserService(db)
-        
+
         existing_user = await user_service.get_user_by_google_id(user_info.get("id"))
-        
+
         if existing_user:
             user = existing_user
         else:
@@ -128,12 +132,12 @@ async def google_callback(
             duplicate_reg = await student_collection.find_one({"regNo": reg_no})
             if not duplicate_reg:
                 await student_collection.insert_one(student_payload)
-        
+
         # Create JWT token
         access_token = create_access_token(
             data={"sub": user.id, "email": user.email}
         )
-        
+
         # Return token (in production, redirect to frontend with token in URL/cookie)
         return {
             "access_token": access_token,
@@ -147,7 +151,6 @@ async def google_callback(
                 "photoURL": user_info.get("picture"),
             },
         }
-    
     except HTTPException:
         raise
     except Exception as e:
