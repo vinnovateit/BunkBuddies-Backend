@@ -39,7 +39,14 @@ async def fetch_google_user_info(code: str) -> dict:
             code=code,
             grant_type="authorization_code",
         )
-        response = await client.get(GOOGLE_USERINFO_URI, token=token)
+        access_token = token.get("access_token")
+        if not access_token:
+            raise ValueError("Google token response missing access_token")
+
+        response = await client.get(
+            GOOGLE_USERINFO_URI,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
         response.raise_for_status()
         return response.json()
     finally:
