@@ -12,6 +12,19 @@ class UserService:
     
     def __init__(self, db: AsyncIOMotorDatabase):
         self.collection = db["users"]
+
+    @staticmethod
+    def _to_user(user_doc: dict | None) -> Optional[User]:
+        """Normalize Mongo document into User model."""
+        if not user_doc:
+            return None
+
+        normalized = dict(user_doc)
+        mongo_id = normalized.pop("_id", None)
+        if mongo_id is not None:
+            normalized["id"] = str(mongo_id)
+
+        return User(**normalized)
     
     async def create_user(self, user_data: UserLogin) -> User:
         """Create a new user"""
@@ -31,26 +44,18 @@ class UserService:
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get user by email"""
         user_doc = await self.collection.find_one({"email": email})
-        if user_doc:
-            user_doc["id"] = str(user_doc["_id"])
-            return User(**user_doc)
-        return None
+        return self._to_user(user_doc)
     
     async def get_user_by_google_id(self, google_id: str) -> Optional[User]:
         """Get user by Google ID"""
         user_doc = await self.collection.find_one({"google_id": google_id})
-        if user_doc:
-            user_doc["id"] = str(user_doc["_id"])
-            return User(**user_doc)
-        return None
+        return self._to_user(user_doc)
     
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
         """Get user by ID"""
         try:
             user_doc = await self.collection.find_one({"_id": ObjectId(user_id)})
-            if user_doc:
-                user_doc["id"] = str(user_doc["_id"])
-                return User(**user_doc)
+            return self._to_user(user_doc)
         except:
             pass
         return None
@@ -64,9 +69,7 @@ class UserService:
                 {"$set": update_data},
                 return_document=True
             )
-            if result:
-                result["id"] = str(result["_id"])
-                return User(**result)
+            return self._to_user(result)
         except:
             pass
         return None
