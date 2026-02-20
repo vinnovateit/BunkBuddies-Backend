@@ -1,13 +1,11 @@
-from pydantic_settings import BaseSettings
-from pydantic import Field
-from typing import Optional
+from pydantic import BaseSettings, Field
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
     # MongoDB
-    mongodb_url: str = Field(default="mongodb://localhost:27017", validation_alias="MONGODB_URI")
+    mongodb_url: str = Field(default="mongodb://localhost:27017", env="MONGODB_URI")
     database_name: str = "bunkbuddies"
     
     # Google OAuth
