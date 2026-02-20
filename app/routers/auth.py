@@ -35,45 +35,6 @@ def _extract_name(user_info: dict) -> str:
     return email.split("@")[0] if email else ""
 
 
-@router.post("/signup")
-async def signup_student(
-    payload: SignupStudentRequest,
-    current_user: CurrentAuthUser = Depends(get_current_auth_user),
-):
-    db = get_database()
-    student_collection = db["students"]
-    user_service = UserService(db)
-    current_db_user = await user_service.get_user_by_id(current_user.user_id)
-
-    if not current_db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    existing_user = await student_collection.find_one({"regNo": payload.regNo})
-    if existing_user and existing_user.get("firebaseUID") != current_user.uid:
-        return {
-            "message": "User already exists",
-            "user": existing_user,
-        }
-
-    student_data = {
-        "regNo": payload.regNo,
-        "name": payload.name,
-        "email": payload.email,
-        "firebaseUID": current_user.uid,
-        "phone": payload.phone,
-        "photoURL": current_db_user.picture,
-    }
-
-    await student_collection.update_one(
-        {"firebaseUID": current_user.uid},
-        {"$set": student_data},
-        upsert=True,
-    )
-
-    return {
-        "message": "User created",
-        "user": student_data,
-    }
 
 
 @router.get("/me/details")
