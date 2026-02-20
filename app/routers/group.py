@@ -11,10 +11,10 @@ from app.schemas import (
 from app.services import GroupRequestService, GroupService, StudentService
 from app.services.bunk_common import verify_blocks
 
-router = APIRouter(prefix="/g", tags=["group"])
+router = APIRouter(prefix="/group", tags=["group"])
 
 
-@router.get("/")
+@router.get("/listGroups")
 async def list_groups(
     offset: int = Query(0),
     limit: int = Query(20),
@@ -60,7 +60,7 @@ async def list_groups(
     }
 
 
-@router.post("/")
+@router.post("/createGroup")
 async def create_group(
     payload: CreateGroupRequest,
     current_user: CurrentAuthUser = Depends(get_current_auth_user),
@@ -92,7 +92,7 @@ async def create_group(
     return {"message": "Group created successfully.", "group": group}
 
 
-@router.put("/")
+@router.put("/updateGroup")
 async def update_group(
     payload: UpdateGroupRequest,
     current_user: CurrentAuthUser = Depends(get_current_auth_user),
@@ -120,7 +120,7 @@ async def update_group(
     return {"message": "Group updated successfully.", "group": updated_group}
 
 
-@router.delete("/")
+@router.delete("/deleteGroup")
 async def delete_group(current_user: CurrentAuthUser = Depends(get_current_auth_user)):
     db = get_database()
     student_service = StudentService(db)
@@ -145,7 +145,7 @@ async def delete_group(current_user: CurrentAuthUser = Depends(get_current_auth_
     return {"message": "Group deleted successfully.", "group": {"id": group["id"]}}
 
 
-@router.get("/generate/code")
+@router.get("/generateCode")
 async def generate_group_code(current_user: CurrentAuthUser = Depends(get_current_auth_user)):
     db = get_database()
     group_service = GroupService(db)
@@ -161,7 +161,7 @@ async def generate_group_code(current_user: CurrentAuthUser = Depends(get_curren
     return {"message": "Group code generated successfully", "code": code}
 
 
-@router.post("/join/{code}")
+@router.post("/joinGroup/{code}")
 async def join_group_by_code(
     code: str,
     current_user: CurrentAuthUser = Depends(get_current_auth_user),
@@ -196,7 +196,7 @@ async def join_group_by_code(
     return {"message": "Joined group successfully", "group": updated_group}
 
 
-@router.post("/leave")
+@router.post("/leaveGroup")
 async def leave_group(current_user: CurrentAuthUser = Depends(get_current_auth_user)):
     db = get_database()
     student_service = StudentService(db)

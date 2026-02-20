@@ -7,7 +7,7 @@ from app.schemas import UserResponse
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{userId}", response_model=UserResponse)
 async def get_user(user_id: str):
     """Get user by ID"""
     db = get_database()

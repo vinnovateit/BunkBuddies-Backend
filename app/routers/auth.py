@@ -37,7 +37,7 @@ def _extract_name(user_info: dict) -> str:
 
 
 
-@router.get("/me/details")
+@router.get("/meDetails")
 async def get_signed_in_details(
     current_user: CurrentAuthUser = Depends(get_current_auth_user),
 ):

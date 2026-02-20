@@ -5,10 +5,10 @@ from app.database import get_database
 from app.schemas import CurrentAuthUser, UpdateStudentRequest
 from app.services import GroupService, StudentService
 
-router = APIRouter(prefix="/s", tags=["student"])
+router = APIRouter(prefix="/student", tags=["student"])
 
 
-@router.get("/")
+@router.get("/getStudent")
 async def get_student(current_user: CurrentAuthUser = Depends(get_current_auth_user)):
     db = get_database()
     student_service = StudentService(db)
@@ -41,7 +41,7 @@ async def get_student(current_user: CurrentAuthUser = Depends(get_current_auth_u
     return {"message": "User found", "user": user_with_admin_details}
 
 
-@router.put("/")
+@router.put("/updateStudent")
 async def update_student(
     payload: UpdateStudentRequest,
     current_user: CurrentAuthUser = Depends(get_current_auth_user),

@@ -5,10 +5,10 @@ from app.database import get_database
 from app.schemas import CurrentAuthUser, GroupRequestStatus
 from app.services import GroupRequestService, GroupService, StudentService
 
-router = APIRouter(prefix="/gr", tags=["group-requests"])
+router = APIRouter(prefix="/groupRequest", tags=["groupRequest"])
 
 
-@router.get("/")
+@router.get("/listRequests")
 async def list_group_requests(current_user: CurrentAuthUser = Depends(get_current_auth_user)):
     db = get_database()
     student_service = StudentService(db)
@@ -29,7 +29,7 @@ async def list_group_requests(current_user: CurrentAuthUser = Depends(get_curren
     return {"message": "Requests fetched successfully", "requests": requests}
 
 
-@router.post("/join/{id}")
+@router.post("/joinRequest/{id}")
 async def request_join_group(
     id: str,
     current_user: CurrentAuthUser = Depends(get_current_auth_user),
@@ -61,7 +61,7 @@ async def request_join_group(
     return {"message": "Request sent successfully", "request": request}
 
 
-@router.post("/{id}/{action}")
+@router.post("/updateRequest/{id}/{action}")
 async def update_request(
     id: str,
     action: GroupRequestStatus,
