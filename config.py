@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # Google OAuth
     google_client_id: str = "dev-client-id"
     google_client_secret: str = "dev-client-secret"
-    google_redirect_uri: str = "http://localhost:3000/auth/callback"
+    google_redirect_uri: str = "http://localhost:3000/api/auth/callback/google"
     
     # JWT
     secret_key: str = "dev-secret-key-change-in-production"
