@@ -29,3 +29,17 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+from app.schemas.bunk import (
+    CreateGroupRequest,
+    CurrentAuthUser,
+    GroupQueryRequest,
+    GroupRequestStatus,
+    GroupSize,
+    GroupType,
+    HostelType,
+    SignupStudentRequest,
+    UpdateGroupRequest,
+    UpdateStudentRequest,
+)

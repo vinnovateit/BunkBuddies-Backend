@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import Optional
 
 
@@ -6,13 +7,13 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
     # MongoDB
-    mongodb_url: str = "mongodb://localhost:27017"
+    mongodb_url: str = Field(default="mongodb://localhost:27017", validation_alias="MONGODB_URI")
     database_name: str = "bunkbuddies"
     
     # Google OAuth
     google_client_id: str = "dev-client-id"
     google_client_secret: str = "dev-client-secret"
-    google_redirect_uri: str = "http://localhost:8000/auth/callback"
+    google_redirect_uri: str = "http://localhost:3000/auth/callback"
     
     # JWT
     secret_key: str = "dev-secret-key-change-in-production"
@@ -22,11 +23,12 @@ class Settings(BaseSettings):
     # Server
     debug: bool = True
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 3000
     
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 settings = Settings()

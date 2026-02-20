@@ -1,61 +1,45 @@
-"""Google OAuth Handler"""
-import os
-from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
+"""Google OAuth Handler (Authlib)"""
+from authlib.integrations.httpx_client import AsyncOAuth2Client
+
 from config import settings
 
+GOOGLE_AUTH_URI = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URI = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URI = "https://www.googleapis.com/oauth2/v2/userinfo"
+GOOGLE_SCOPES = "openid email profile"
 
-def get_google_flow():
-    """Initialize Google OAuth flow"""
-    flow = Flow.from_client_secrets_file(
-        'credentials.json',
-        scopes=[
-            'https://www.googleapis.com/auth/userinfo.profile',
-            'https://www.googleapis.com/auth/userinfo.email'
-        ],
-        redirect_uri=settings.google_redirect_uri
+
+async def get_authorization_url() -> tuple[str, str]:
+    client = AsyncOAuth2Client(
+        client_id=settings.google_client_id,
+        client_secret=settings.google_client_secret,
+        redirect_uri=settings.google_redirect_uri,
+        scope=GOOGLE_SCOPES,
     )
-    return flow
-
-
-def get_authorization_url():
-    """Get Google authorization URL"""
-    flow = Flow.from_client_config(
-        {
-            "installed": {
-                "client_id": settings.google_client_id,
-                "client_secret": settings.google_client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [settings.google_redirect_uri]
-            }
-        },
-        scopes=[
-            'https://www.googleapis.com/auth/userinfo.profile',
-            'https://www.googleapis.com/auth/userinfo.email'
-        ],
-        redirect_uri=settings.google_redirect_uri
+    authorization_url, state = client.create_authorization_url(
+        GOOGLE_AUTH_URI,
+        access_type="offline",
+        include_granted_scopes="true",
     )
-    
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true'
-    )
-    
-    return authorization_url, state, flow
+    await client.aclose()
+    return authorization_url, state
 
 
-def get_user_info_from_token(token):
-    """Get user information from Google token"""
-    import httpx
-    
-    headers = {'Authorization': f'Bearer {token}'}
-    response = httpx.get(
-        'https://www.googleapis.com/oauth2/v2/userinfo',
-        headers=headers
+async def fetch_google_user_info(code: str) -> dict:
+    client = AsyncOAuth2Client(
+        client_id=settings.google_client_id,
+        client_secret=settings.google_client_secret,
+        redirect_uri=settings.google_redirect_uri,
+        scope=GOOGLE_SCOPES,
     )
-    
-    if response.status_code == 200:
+    try:
+        token = await client.fetch_token(
+            GOOGLE_TOKEN_URI,
+            code=code,
+            grant_type="authorization_code",
+        )
+        response = await client.get(GOOGLE_USERINFO_URI, token=token)
+        response.raise_for_status()
         return response.json()
-    return None
+    finally:
+        await client.aclose()

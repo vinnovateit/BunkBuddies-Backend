@@ -26,3 +26,6 @@ class User(BaseModel):
                 "google_id": "google_id_123"
             }
         }
+
+
+from app.models.bunk import Group, GroupRequest, Student

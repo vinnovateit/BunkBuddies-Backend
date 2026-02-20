@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from config import settings
 from app.database import connect_to_mongo, close_mongo_connection
-from app.routers import auth, users
+from app.routers import auth, group, group_requests, student, users
 
 
 # Lifespan context manager for startup/shutdown
@@ -39,6 +39,9 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(student.router)
+app.include_router(group.router)
+app.include_router(group_requests.router)
 
 
 @app.get("/")

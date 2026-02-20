@@ -4,7 +4,7 @@ from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from app.models import User
-from app.schemas import UserLogin, UserResponse
+from app.schemas import UserLogin
 
 
 class UserService:
@@ -54,7 +54,7 @@ class UserService:
         except:
             pass
         return None
-    
+
     async def update_user(self, user_id: str, update_data: dict) -> Optional[User]:
         """Update user"""
         try:
@@ -70,3 +70,8 @@ class UserService:
         except:
             pass
         return None
+
+
+from app.services.group_request_service import GroupRequestService
+from app.services.group_service import GroupService
+from app.services.student_service import StudentService
