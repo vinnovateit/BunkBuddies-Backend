@@ -13,36 +13,83 @@ from app.auth.google import fetch_google_user_info, get_authorization_url
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+_REG_NO_CANDIDATE_PATTERN = re.compile(r"\b([0-9Oo]{2}[A-Za-z]{3}[0-9Oo]{4})\b")
+_REG_NO_NUMERIC_INDEXES = (0, 1, 5, 6, 7, 8)
+_REG_NO_ALPHA_INDEXES = (2, 3, 4)
+
+
+def _normalize_reg_no_candidate(raw: str) -> str | None:
+    cleaned = re.sub(r"[^A-Za-z0-9]", "", raw or "").upper()
+    if len(cleaned) != 9:
+        return None
+
+    chars = list(cleaned)
+    for index in _REG_NO_NUMERIC_INDEXES:
+        if chars[index] == "O":
+            chars[index] = "0"
+        if not chars[index].isdigit():
+            return None
+
+    for index in _REG_NO_ALPHA_INDEXES:
+        if not chars[index].isalpha():
+            return None
+
+    return "".join(chars)
+
+
+def _extract_reg_no_from_text(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    match = _REG_NO_CANDIDATE_PATTERN.search(value)
+    if not match:
+        return None
+
+    return _normalize_reg_no_candidate(match.group(1))
+
+
 def _extract_reg_no_from_email(email: str) -> str | None:
-    local_part = email.split("@")[0].upper().replace(".", "")
-    if re.match(r"^\d{2}[A-Z]{3}\d{4}$", local_part):
-        return local_part
-    return None
+    local_part = email.split("@")[0]
+    return _extract_reg_no_from_text(local_part)
 
 
 def _fallback_reg_no(email: str, google_id: str | None) -> str:
-    local_part = email.split("@")[0].upper()
-    normalized = re.sub(r"[^A-Z0-9]", "", local_part)
-    if normalized:
-        return normalized
     if google_id:
         return f"UID{google_id}"
     return "UNKNOWN"
 
 
-def _extract_name(user_info: dict) -> str:
+def _strip_reg_no_from_name(value: str, reg_no: str | None) -> str:
+    cleaned = re.sub(r"\s+", " ", (value or "").strip())
+    if not cleaned:
+        return ""
+
+    if reg_no:
+        cleaned = re.sub(re.escape(reg_no), "", cleaned, flags=re.IGNORECASE).strip()
+
+    cleaned = _REG_NO_CANDIDATE_PATTERN.sub("", cleaned).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned
+
+
+def _extract_name(user_info: dict, reg_no: str | None) -> str:
     full_name = (user_info.get("name") or "").strip()
     if full_name:
-        return full_name
+        stripped = _strip_reg_no_from_name(full_name, reg_no)
+        if stripped:
+            return stripped
 
     first_name = (user_info.get("given_name") or "").strip()
     last_name = (user_info.get("family_name") or "").strip()
     fallback = f"{first_name} {last_name}".strip()
     if fallback:
-        return fallback
+        stripped = _strip_reg_no_from_name(fallback, reg_no)
+        if stripped:
+            return stripped
 
     email = (user_info.get("email") or "").strip()
-    return email.split("@")[0] if email else ""
+    local_part = email.split("@")[0] if email else ""
+    return local_part.replace(".", " ").strip()
 
 
 def _validate_redirect_uri(redirect_uri: str | None) -> str | None:
@@ -102,8 +149,14 @@ async def google_callback(
         redirect_uri = _validate_redirect_uri(redirect_uri)
         user_info = await fetch_google_user_info(code, redirect_uri=redirect_uri)
         email = (user_info.get("email") or "").strip()
-        name = _extract_name(user_info)
-        reg_no = _extract_reg_no_from_email(email)
+        reg_no = (
+            _extract_reg_no_from_email(email)
+            or _extract_reg_no_from_text(user_info.get("name"))
+            or _extract_reg_no_from_text(
+                f"{(user_info.get('given_name') or '').strip()} {(user_info.get('family_name') or '').strip()}".strip()
+            )
+        )
+        name = _extract_name(user_info, reg_no)
 
         # Restrict to @vitstudent.ac.in emails only
         if not email.lower().endswith("@vitstudent.ac.in"):

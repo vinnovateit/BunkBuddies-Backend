@@ -11,19 +11,68 @@ from app.services.bunk_common import serialize_for_api
 router = APIRouter(prefix="/student", tags=["student"])
 
 
+_REG_NO_CANDIDATE_PATTERN = re.compile(r"\b([0-9Oo]{2}[A-Za-z]{3}[0-9Oo]{4})\b")
+_REG_NO_NUMERIC_INDEXES = (0, 1, 5, 6, 7, 8)
+_REG_NO_ALPHA_INDEXES = (2, 3, 4)
+
+
+def _normalize_reg_no_candidate(raw: str) -> str | None:
+    cleaned = re.sub(r"[^A-Za-z0-9]", "", raw or "").upper()
+    if len(cleaned) != 9:
+        return None
+
+    chars = list(cleaned)
+    for index in _REG_NO_NUMERIC_INDEXES:
+        if chars[index] == "O":
+            chars[index] = "0"
+        if not chars[index].isdigit():
+            return None
+
+    for index in _REG_NO_ALPHA_INDEXES:
+        if not chars[index].isalpha():
+            return None
+
+    return "".join(chars)
+
+
+def _extract_reg_no_from_text(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    match = _REG_NO_CANDIDATE_PATTERN.search(value)
+    if not match:
+        return None
+
+    return _normalize_reg_no_candidate(match.group(1))
+
+
 def _extract_reg_no_from_email(email: str) -> str | None:
-    local_part = email.split("@")[0].upper().replace(".", "")
-    if re.match(r"^\d{2}[A-Z]{3}\d{4}$", local_part):
-        return local_part
-    return None
+    local_part = email.split("@")[0]
+    return _extract_reg_no_from_text(local_part)
 
 
-def _fallback_reg_no(email: str, uid: str) -> str:
-    local_part = email.split("@")[0].upper()
-    normalized = re.sub(r"[^A-Z0-9]", "", local_part)
-    if normalized:
-        return normalized
+def _fallback_reg_no(uid: str) -> str:
     return f"UID{uid}"
+
+
+def _is_valid_reg_no(value: str | None) -> bool:
+    if not value:
+        return False
+    normalized = _normalize_reg_no_candidate(value)
+    return normalized == value.upper()
+
+
+def _strip_reg_no_from_name(value: str, reg_no: str | None) -> str:
+    cleaned = re.sub(r"\s+", " ", (value or "").strip())
+    if not cleaned:
+        return ""
+
+    if reg_no:
+        cleaned = re.sub(re.escape(reg_no), "", cleaned, flags=re.IGNORECASE).strip()
+
+    cleaned = _REG_NO_CANDIDATE_PATTERN.sub("", cleaned).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned
 
 
 async def _ensure_student_profile(
@@ -33,14 +82,38 @@ async def _ensure_student_profile(
 ) -> dict | None:
     student = await student_service.get_by_uid(current_user.uid)
     if student:
+        updates = {}
+        current_name = (student.get("name") or "").strip()
+        current_reg = (student.get("regNo") or "").strip()
+
+        inferred_reg_from_name = _extract_reg_no_from_text(current_name)
+        inferred_reg_from_email = _extract_reg_no_from_email(student.get("email") or "")
+        resolved_reg = inferred_reg_from_name or inferred_reg_from_email
+
+        if resolved_reg and resolved_reg != current_reg:
+            updates["regNo"] = resolved_reg
+            current_reg = resolved_reg
+
+        if not _is_valid_reg_no(current_reg) and inferred_reg_from_name:
+            updates["regNo"] = inferred_reg_from_name
+            current_reg = inferred_reg_from_name
+
+        cleaned_name = _strip_reg_no_from_name(current_name, current_reg)
+        if cleaned_name and cleaned_name != current_name:
+            updates["name"] = cleaned_name
+
+        if updates:
+            await student_service.update_by_uid(current_user.uid, updates)
+            return await student_service.get_by_uid(current_user.uid)
         return student
 
     user = await user_service.get_user_by_id(current_user.user_id)
     if not user:
         return None
 
-    reg_no = _extract_reg_no_from_email(user.email) or _fallback_reg_no(user.email, current_user.uid)
-    name = f"{user.first_name} {user.last_name}".strip() or user.email.split("@")[0]
+    full_name = f"{user.first_name} {user.last_name}".strip()
+    reg_no = _extract_reg_no_from_email(user.email) or _extract_reg_no_from_text(full_name) or _fallback_reg_no(current_user.uid)
+    name = _strip_reg_no_from_name(full_name, reg_no) or user.email.split("@")[0].replace(".", " ").strip()
     student_payload = {
         "regNo": reg_no,
         "name": name,
