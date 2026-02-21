@@ -181,7 +181,12 @@ async def join_group_by_code(
     if not student:
         raise HTTPException(status_code=400, detail="Student not found")
 
-    if student.get("groupId"):
+    existing_group = await group_service.get_any_group_for_student_uid(current_user.uid)
+    if existing_group:
+        if not student.get("groupId"):
+            await student_service.set_group(current_user.uid, existing_group["id"])
+        if student.get("regNo"):
+            await request_service.delete_all_for_student(student["regNo"])
         raise HTTPException(status_code=400, detail="You are already in a group")
 
     group = await group_service.get_by_group_code(code)

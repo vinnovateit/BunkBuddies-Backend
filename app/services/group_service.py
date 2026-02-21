@@ -51,6 +51,22 @@ class GroupService:
             return None
         return await self.get_by_id(student["groupId"])
 
+    async def get_any_group_for_student_uid(self, uid: str) -> Optional[dict]:
+        if not uid:
+            return None
+
+        group = await self.collection.find_one(
+            {
+                "$or": [
+                    {"adminUID": uid},
+                    {"studentUids": uid},
+                ],
+            }
+        )
+        if group:
+            group["id"] = str(group["_id"])
+        return group
+
     async def create_group(self, data: dict) -> dict:
         payload = {
             **data,

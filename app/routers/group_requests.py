@@ -48,7 +48,10 @@ async def request_join_group(
     if not student:
         raise HTTPException(status_code=400, detail="Student doesn't exist")
 
-    if student.get("groupId"):
+    existing_group = await group_service.get_any_group_for_student_uid(current_user.uid)
+    if existing_group:
+        if not student.get("groupId"):
+            await student_service.set_group(current_user.uid, existing_group["id"])
         if student.get("regNo"):
             await request_service.delete_all_for_student(student["regNo"])
         raise HTTPException(status_code=400, detail="You are already in a group")
@@ -101,7 +104,10 @@ async def update_request(
         raise HTTPException(status_code=400, detail="Student doesn't exist")
 
     if action == GroupRequestStatus.ACCEPTED:
-        if student.get("groupId"):
+        existing_group = await group_service.get_any_group_for_student_uid(student.get("firebaseUID"))
+        if existing_group:
+            if not student.get("groupId"):
+                await student_service.set_group(student["firebaseUID"], existing_group["id"])
             await request_service.delete_all_for_student(student["regNo"])
             raise HTTPException(
                 status_code=400,
