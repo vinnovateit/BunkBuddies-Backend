@@ -13,7 +13,26 @@ async def connect_to_mongo():
     database = client[settings.database_name]
     await database["students"].create_index("regNo", unique=True)
     await database["students"].create_index("firebaseUID", unique=True)
-    await database["groups"].create_index("groupCode", unique=True, sparse=True)
+
+    # Ensure uniqueness only for issued (string) invite codes, not null/missing values.
+    group_indexes = await database["groups"].index_information()
+    group_code_index = group_indexes.get("groupCode_1")
+    expected_partial = {"groupCode": {"$type": "string"}}
+    needs_rebuild = False
+    if group_code_index:
+        has_unique = bool(group_code_index.get("unique"))
+        partial_filter = group_code_index.get("partialFilterExpression")
+        if not has_unique or partial_filter != expected_partial:
+            needs_rebuild = True
+
+    if needs_rebuild:
+        await database["groups"].drop_index("groupCode_1")
+
+    await database["groups"].create_index(
+        "groupCode",
+        unique=True,
+        partialFilterExpression=expected_partial,
+    )
     await database["group_requests"].create_index(
         [("groupId", 1), ("studentRegNo", 1)],
         unique=True,

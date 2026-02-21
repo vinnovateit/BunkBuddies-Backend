@@ -45,7 +45,6 @@ class GroupService:
     async def create_group(self, data: dict) -> dict:
         payload = {
             **data,
-            "groupCode": None,
             "createdAt": now_utc(),
             "studentUids": [data["adminUID"]],
         }
