@@ -30,6 +30,14 @@ class GroupService:
             return [raw.strip()]
         return []
 
+    @staticmethod
+    def is_hostel_compatible(student: dict, group: dict) -> bool:
+        student_hostel = student.get("hostelType")
+        group_hostel = group.get("hostelType")
+        if not student_hostel or not group_hostel:
+            return False
+        return student_hostel == group_hostel
+
     async def get_by_id(self, group_id: str) -> Optional[dict]:
         oid = object_id_from_str(group_id)
         if not oid:

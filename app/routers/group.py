@@ -180,6 +180,8 @@ async def join_group_by_code(
     student = await student_service.get_by_uid(current_user.uid)
     if not student:
         raise HTTPException(status_code=400, detail="Student not found")
+    if not student.get("hostelType"):
+        raise HTTPException(status_code=400, detail="Student has not selected a hostel type.")
 
     existing_group = await group_service.get_any_group_for_student_uid(current_user.uid)
     if existing_group:
@@ -192,6 +194,8 @@ async def join_group_by_code(
     group = await group_service.get_by_group_code(code)
     if not group:
         raise HTTPException(status_code=400, detail="Group does not exist")
+    if not group_service.is_hostel_compatible(student, group):
+        raise HTTPException(status_code=403, detail="You can only join rooms from your own hostel type.")
 
     group_student_uids = group_service.get_student_uids(group)
     if current_user.uid == group["adminUID"] or current_user.uid in group_student_uids:

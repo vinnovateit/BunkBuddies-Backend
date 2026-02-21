@@ -47,6 +47,8 @@ async def request_join_group(
     student = await student_service.get_by_uid(current_user.uid)
     if not student:
         raise HTTPException(status_code=400, detail="Student doesn't exist")
+    if not student.get("hostelType"):
+        raise HTTPException(status_code=400, detail="Student has not selected a hostel type.")
 
     existing_group = await group_service.get_any_group_for_student_uid(current_user.uid)
     if existing_group:
@@ -55,6 +57,12 @@ async def request_join_group(
         if student.get("regNo"):
             await request_service.delete_all_for_student(student["regNo"])
         raise HTTPException(status_code=400, detail="You are already in a group")
+
+    if not group_service.is_hostel_compatible(student, group):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only request to join rooms from your own hostel type.",
+        )
 
     existing = await request_service.get_existing(id, student["regNo"])
     if existing:
@@ -104,6 +112,9 @@ async def update_request(
         raise HTTPException(status_code=400, detail="Student doesn't exist")
 
     if action == GroupRequestStatus.ACCEPTED:
+        if not group_service.is_hostel_compatible(student, group):
+            raise HTTPException(status_code=400, detail="Student hostel type does not match this room.")
+
         existing_group = await group_service.get_any_group_for_student_uid(student.get("firebaseUID"))
         if existing_group:
             if not student.get("groupId"):
