@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -20,6 +20,23 @@ class GroupService:
         self.collection = db["groups"]
         self.student_service = StudentService(db)
         self.request_collection = db["group_requests"]
+
+    @staticmethod
+    def get_student_uids(group: dict) -> list[str]:
+        raw = group.get("studentUids")
+        if isinstance(raw, list):
+            return [uid for uid in raw if isinstance(uid, str) and uid.strip()]
+        if isinstance(raw, str) and raw.strip():
+            return [raw.strip()]
+        return []
+
+    @staticmethod
+    def is_hostel_compatible(student: dict, group: dict) -> bool:
+        student_hostel = student.get("hostelType")
+        group_hostel = group.get("hostelType")
+        if not student_hostel or not group_hostel:
+            return False
+        return student_hostel == group_hostel
 
     async def get_by_id(self, group_id: str) -> Optional[dict]:
         oid = object_id_from_str(group_id)
@@ -42,10 +59,25 @@ class GroupService:
             return None
         return await self.get_by_id(student["groupId"])
 
+    async def get_any_group_for_student_uid(self, uid: str) -> Optional[dict]:
+        if not uid:
+            return None
+
+        group = await self.collection.find_one(
+            {
+                "$or": [
+                    {"adminUID": uid},
+                    {"studentUids": uid},
+                ],
+            }
+        )
+        if group:
+            group["id"] = str(group["_id"])
+        return group
+
     async def create_group(self, data: dict) -> dict:
         payload = {
             **data,
-            "groupCode": None,
             "createdAt": now_utc(),
             "studentUids": [data["adminUID"]],
         }
@@ -73,27 +105,47 @@ class GroupService:
         return result.deleted_count > 0
 
     async def is_full(self, group: dict) -> bool:
-        return len(group.get("studentUids", [])) >= size_to_capacity(group["groupSize"])
+        return len(self.get_student_uids(group)) >= size_to_capacity(group.get("groupSize"))
 
     async def add_student(self, group: dict, student_uid: str) -> dict:
+        normalized_uids = self.get_student_uids(group)
+        await self.collection.update_one(
+            {"_id": group["_id"]},
+            {"$set": {"studentUids": normalized_uids}},
+        )
+
         await self.collection.update_one(
             {"_id": group["_id"]},
             {"$addToSet": {"studentUids": student_uid}},
         )
         refreshed = await self.collection.find_one({"_id": group["_id"]})
+        if not refreshed:
+            raise ValueError("Group no longer exists")
         refreshed["id"] = str(refreshed["_id"])
         return refreshed
 
     async def remove_student(self, group: dict, student_uid: str) -> dict:
+        normalized_uids = self.get_student_uids(group)
+        await self.collection.update_one(
+            {"_id": group["_id"]},
+            {"$set": {"studentUids": normalized_uids}},
+        )
+
         await self.collection.update_one(
             {"_id": group["_id"]},
             {"$pull": {"studentUids": student_uid}},
         )
         refreshed = await self.collection.find_one({"_id": group["_id"]})
+        if not refreshed:
+            raise ValueError("Group no longer exists")
         refreshed["id"] = str(refreshed["_id"])
         return refreshed
 
     async def generate_code(self, group: dict) -> str:
+        existing_code = group.get("groupCode")
+        if existing_code and not await self.is_group_code_expired(group):
+            return existing_code
+
         code = await generate_group_code(self.collection)
         await self.collection.update_one(
             {"_id": group["_id"]},
@@ -102,13 +154,41 @@ class GroupService:
         return code
 
     async def is_group_code_expired(self, group: dict) -> bool:
+        if not group.get("groupCode"):
+            return True
+
         created_at = group.get("createdAt")
         if not created_at:
             return True
-        return now_utc() - created_at > timedelta(minutes=15)
+
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            except ValueError:
+                return True
+
+        if not isinstance(created_at, datetime):
+            return True
+
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+
+        current_time = now_utc()
+        if current_time.tzinfo is None:
+            current_time = current_time.replace(tzinfo=timezone.utc)
+
+        return current_time - created_at > timedelta(minutes=15)
 
     async def list_groups_for_student(self, student: dict, query: GroupQueryRequest) -> list[dict]:
         mongo_query = {"hostelType": student["hostelType"]}
+        student_uid = student.get("firebaseUID")
+        student_group_id = object_id_from_str(student.get("groupId", ""))
+
+        if student_uid:
+            mongo_query["adminUID"] = {"$ne": student_uid}
+            mongo_query["studentUids"] = {"$ne": student_uid}
+        if student_group_id:
+            mongo_query["_id"] = {"$ne": student_group_id}
 
         if query.type:
             mongo_query["type"] = query.type.value
@@ -129,7 +209,16 @@ class GroupService:
 
         hydrated: list[dict] = []
         for group in groups:
-            students = await self.student_service.list_by_uids(group.get("studentUids", []))
+            if not self.is_hostel_compatible(student, group):
+                continue
+
+            if student_uid:
+                if group.get("adminUID") == student_uid or student_uid in self.get_student_uids(group):
+                    continue
+            if student_group_id and group.get("_id") == student_group_id:
+                continue
+
+            students = await self.student_service.list_by_uids(self.get_student_uids(group))
             admin = next((s for s in students if s.get("firebaseUID") == group.get("adminUID")), None)
 
             if query.vacancy is not None:

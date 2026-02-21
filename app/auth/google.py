@@ -24,7 +24,8 @@ async def get_authorization_url(redirect_uri: str | None = None) -> tuple[str, s
         GOOGLE_AUTH_URI,
         access_type="offline",
         include_granted_scopes="true",
-        hd="vitstudent.ac.in"
+        hd="vitstudent.ac.in",
+        prompt="select_account",
     )
     await client.aclose()
     return authorization_url, state

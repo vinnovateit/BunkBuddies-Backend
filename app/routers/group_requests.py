@@ -47,16 +47,35 @@ async def request_join_group(
     student = await student_service.get_by_uid(current_user.uid)
     if not student:
         raise HTTPException(status_code=400, detail="Student doesn't exist")
+    if not student.get("hostelType"):
+        raise HTTPException(status_code=400, detail="Student has not selected a hostel type.")
+
+    existing_group = await group_service.get_any_group_for_student_uid(current_user.uid)
+    if existing_group:
+        if not student.get("groupId"):
+            await student_service.set_group(current_user.uid, existing_group["id"])
+        if student.get("regNo"):
+            await request_service.delete_all_for_student(student["regNo"])
+        raise HTTPException(status_code=400, detail="You are already in a group")
+
+    if not group_service.is_hostel_compatible(student, group):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only request to join rooms from your own hostel type.",
+        )
 
     existing = await request_service.get_existing(id, student["regNo"])
     if existing:
         raise HTTPException(status_code=400, detail="You have already sent a request")
 
-    if student.get("firebaseUID") in group.get("studentUids", []):
+    if student.get("firebaseUID") in group_service.get_student_uids(group):
         raise HTTPException(status_code=400, detail="You are already in this group")
 
-    if await group_service.is_full(group):
-        raise HTTPException(status_code=400, detail="Group is full")
+    try:
+        if await group_service.is_full(group):
+            raise HTTPException(status_code=400, detail="Group is full")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     request = await request_service.create_request(id, student["regNo"])
     return {"message": "Request sent successfully", "request": serialize_for_api(request)}
@@ -93,10 +112,29 @@ async def update_request(
         raise HTTPException(status_code=400, detail="Student doesn't exist")
 
     if action == GroupRequestStatus.ACCEPTED:
-        if await group_service.is_full(group):
-            raise HTTPException(status_code=400, detail="Group is full")
+        if not group_service.is_hostel_compatible(student, group):
+            raise HTTPException(status_code=400, detail="Student hostel type does not match this room.")
 
-        updated_group = await group_service.add_student(group, student["firebaseUID"])
+        existing_group = await group_service.get_any_group_for_student_uid(student.get("firebaseUID"))
+        if existing_group:
+            if not student.get("groupId"):
+                await student_service.set_group(student["firebaseUID"], existing_group["id"])
+            await request_service.delete_all_for_student(student["regNo"])
+            raise HTTPException(
+                status_code=400,
+                detail="Student is already in a group. Pending requests were cleared.",
+            )
+
+        try:
+            if await group_service.is_full(group):
+                raise HTTPException(status_code=400, detail="Group is full")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        try:
+            updated_group = await group_service.add_student(group, student["firebaseUID"])
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
         await student_service.set_group(student["firebaseUID"], updated_group["id"])
         await request_service.delete_all_for_student(student["regNo"])
         return {

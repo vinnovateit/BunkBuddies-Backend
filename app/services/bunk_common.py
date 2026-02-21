@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import re
 import string
 from datetime import datetime, timezone
 
@@ -34,16 +35,17 @@ MH_BLOCKS = {
 LH_BLOCKS = {"A", "B", "C", "D", "E", "E Annex", "F", "G", "H", "J"}
 
 
-def size_to_capacity(size: GroupSize) -> int:
-    mapping = {
-        GroupSize.ONE: 1,
-        GroupSize.TWO: 2,
-        GroupSize.THREE: 3,
-        GroupSize.FOUR: 4,
-        GroupSize.SIX: 6,
-        GroupSize.EIGHT: 8,
-    }
-    return mapping[size]
+def size_to_capacity(size: GroupSize | str) -> int:
+    raw = size.value if isinstance(size, GroupSize) else str(size or "").strip()
+    match = re.fullmatch(r"(\d+)(?:\s*-\s*bedded)?", raw, flags=re.IGNORECASE)
+    if not match:
+        raise ValueError(f"Invalid group size value: {size!r}")
+
+    value = int(match.group(1))
+    if value not in {1, 2, 3, 4, 6, 8}:
+        raise ValueError(f"Unsupported group size value: {size!r}")
+
+    return value
 
 
 def verify_blocks(hostel_type: HostelType, group_data: dict) -> bool:

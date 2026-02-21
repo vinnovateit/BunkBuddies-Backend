@@ -68,6 +68,7 @@ async def create_group(
     db = get_database()
     student_service = StudentService(db)
     group_service = GroupService(db)
+    request_service = GroupRequestService(db)
 
     student = await student_service.get_by_uid(current_user.uid)
     if not student:
@@ -88,6 +89,8 @@ async def create_group(
 
     group = await group_service.create_group(body)
     await student_service.set_group(current_user.uid, group["id"])
+    if student.get("regNo"):
+        await request_service.delete_all_for_student(student["regNo"])
 
     return {"message": "Group created successfully.", "group": serialize_for_api(group)}
 
@@ -154,8 +157,11 @@ async def generate_group_code(current_user: CurrentAuthUser = Depends(get_curren
     if not group:
         raise HTTPException(status_code=400, detail="You are not the admin of any group")
 
-    if await group_service.is_full(group):
-        raise HTTPException(status_code=400, detail="Group is full")
+    try:
+        if await group_service.is_full(group):
+            raise HTTPException(status_code=400, detail="Group is full")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     code = await group_service.generate_code(group)
     return {"message": "Group code generated successfully", "code": code}
@@ -169,29 +175,48 @@ async def join_group_by_code(
     db = get_database()
     student_service = StudentService(db)
     group_service = GroupService(db)
+    request_service = GroupRequestService(db)
 
     student = await student_service.get_by_uid(current_user.uid)
     if not student:
         raise HTTPException(status_code=400, detail="Student not found")
+    if not student.get("hostelType"):
+        raise HTTPException(status_code=400, detail="Student has not selected a hostel type.")
 
-    if student.get("groupId"):
+    existing_group = await group_service.get_any_group_for_student_uid(current_user.uid)
+    if existing_group:
+        if not student.get("groupId"):
+            await student_service.set_group(current_user.uid, existing_group["id"])
+        if student.get("regNo"):
+            await request_service.delete_all_for_student(student["regNo"])
         raise HTTPException(status_code=400, detail="You are already in a group")
 
     group = await group_service.get_by_group_code(code)
     if not group:
         raise HTTPException(status_code=400, detail="Group does not exist")
+    if not group_service.is_hostel_compatible(student, group):
+        raise HTTPException(status_code=403, detail="You can only join rooms from your own hostel type.")
 
-    if current_user.uid == group["adminUID"] or current_user.uid in group.get("studentUids", []):
+    group_student_uids = group_service.get_student_uids(group)
+    if current_user.uid == group["adminUID"] or current_user.uid in group_student_uids:
         raise HTTPException(status_code=400, detail="You have already joined this group")
 
     if await group_service.is_group_code_expired(group):
         raise HTTPException(status_code=400, detail="Group code has expired")
 
-    if await group_service.is_full(group):
-        raise HTTPException(status_code=400, detail="Group is full")
+    try:
+        if await group_service.is_full(group):
+            raise HTTPException(status_code=400, detail="Group is full")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
-    updated_group = await group_service.add_student(group, current_user.uid)
+    try:
+        updated_group = await group_service.add_student(group, current_user.uid)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     await student_service.set_group(current_user.uid, updated_group["id"])
+    if student.get("regNo"):
+        await request_service.delete_all_for_student(student["regNo"])
 
     return {"message": "Joined group successfully", "group": serialize_for_api(updated_group)}
 
@@ -243,7 +268,7 @@ async def remove_member_from_group(
     if member_uid == current_user.uid:
         raise HTTPException(status_code=400, detail="Admin cannot remove themselves")
 
-    if member_uid not in group.get("studentUids", []):
+    if member_uid not in group_service.get_student_uids(group):
         raise HTTPException(status_code=404, detail="Member not found in group")
 
     # Remove member from group
