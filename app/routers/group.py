@@ -9,7 +9,7 @@ from app.schemas import (
     UpdateGroupRequest,
 )
 from app.services import GroupRequestService, GroupService, StudentService
-from app.services.bunk_common import verify_blocks
+from app.services.bunk_common import serialize_for_api, verify_blocks
 
 router = APIRouter(prefix="/group", tags=["group"])
 
@@ -56,7 +56,7 @@ async def list_groups(
     return {
         "total": len(groups),
         "message": "Groups fetched successfully.",
-        "groups": groups,
+        "groups": serialize_for_api(groups),
     }
 
 
@@ -89,7 +89,7 @@ async def create_group(
     group = await group_service.create_group(body)
     await student_service.set_group(current_user.uid, group["id"])
 
-    return {"message": "Group created successfully.", "group": group}
+    return {"message": "Group created successfully.", "group": serialize_for_api(group)}
 
 
 @router.put("/updateGroup")
@@ -117,7 +117,7 @@ async def update_group(
         raise HTTPException(status_code=400, detail="Block does not exist.")
 
     updated_group = await group_service.update_group(group["id"], update_data)
-    return {"message": "Group updated successfully.", "group": updated_group}
+    return {"message": "Group updated successfully.", "group": serialize_for_api(updated_group)}
 
 
 @router.delete("/deleteGroup")
@@ -193,7 +193,7 @@ async def join_group_by_code(
     updated_group = await group_service.add_student(group, current_user.uid)
     await student_service.set_group(current_user.uid, updated_group["id"])
 
-    return {"message": "Joined group successfully", "group": updated_group}
+    return {"message": "Joined group successfully", "group": serialize_for_api(updated_group)}
 
 
 @router.post("/leaveGroup")

@@ -6,6 +6,7 @@ from app.auth.dependencies import get_current_auth_user
 from app.database import get_database
 from app.schemas import CurrentAuthUser, UpdateStudentRequest
 from app.services import GroupService, StudentService, UserService
+from app.services.bunk_common import serialize_for_api
 
 router = APIRouter(prefix="/student", tags=["student"])
 
@@ -91,7 +92,7 @@ async def get_student(current_user: CurrentAuthUser = Depends(get_current_auth_u
         "adminCGPA": admin_details.get("CGPA") if admin_details else None,
     }
 
-    return {"message": "User found", "user": user_with_admin_details}
+    return {"message": "User found", "user": serialize_for_api(user_with_admin_details)}
 
 
 @router.put("/updateStudent")
@@ -110,4 +111,4 @@ async def update_student(
     update_data = payload.model_dump(exclude_none=True)
     updated_student = await student_service.update_by_uid(current_user.uid, update_data)
 
-    return {"message": "User updated", "user": updated_student}
+    return {"message": "User updated", "user": serialize_for_api(updated_student)}

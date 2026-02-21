@@ -4,6 +4,7 @@ from app.auth.dependencies import get_current_auth_user
 from app.database import get_database
 from app.schemas import CurrentAuthUser, GroupRequestStatus
 from app.services import GroupRequestService, GroupService, StudentService
+from app.services.bunk_common import serialize_for_api
 
 router = APIRouter(prefix="/groupRequest", tags=["groupRequest"])
 
@@ -26,7 +27,7 @@ async def list_group_requests(current_user: CurrentAuthUser = Depends(get_curren
         raise HTTPException(status_code=400, detail="You are not an admin")
 
     requests = await group_service.get_pending_requests_for_admin(current_user.uid)
-    return {"message": "Requests fetched successfully", "requests": requests}
+    return {"message": "Requests fetched successfully", "requests": serialize_for_api(requests)}
 
 
 @router.post("/joinRequest/{id}")
@@ -58,7 +59,7 @@ async def request_join_group(
         raise HTTPException(status_code=400, detail="Group is full")
 
     request = await request_service.create_request(id, student["regNo"])
-    return {"message": "Request sent successfully", "request": request}
+    return {"message": "Request sent successfully", "request": serialize_for_api(request)}
 
 
 @router.post("/updateRequest/{id}/{action}")
@@ -109,4 +110,4 @@ async def update_request(
         }
 
     updated_request = await request_service.update_status(id, action)
-    return {"message": "Request updated successfully", "request": updated_request}
+    return {"message": "Request updated successfully", "request": serialize_for_api(updated_request)}
