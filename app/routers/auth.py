@@ -12,11 +12,6 @@ from app.auth.google import fetch_google_user_info, get_authorization_url
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# Whitelisted emails that can bypass @vitstudent.ac.in domain check
-WHITELISTED_EMAILS = {
-    "glakshya42@gmail.com",
-}
-
 
 _REG_NO_CANDIDATE_PATTERN = re.compile(r"\b([0-9Oo]{2}[A-Za-z]{3}[0-9Oo]{4})\b")
 _REG_NO_NUMERIC_INDEXES = (0, 1, 5, 6, 7, 8)
@@ -163,8 +158,8 @@ async def google_callback(
         )
         name = _extract_name(user_info, reg_no)
 
-        # Restrict to @vitstudent.ac.in emails only (unless whitelisted)
-        if not email.lower().endswith("@vitstudent.ac.in") and email.lower() not in WHITELISTED_EMAILS:
+        # Restrict to @vitstudent.ac.in emails only
+        if not email.lower().endswith("@vitstudent.ac.in"):
             raise HTTPException(status_code=403, detail="Only @vitstudent.ac.in email addresses are allowed.")
 
         # Get or create user
