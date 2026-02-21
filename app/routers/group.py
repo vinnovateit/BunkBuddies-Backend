@@ -68,6 +68,7 @@ async def create_group(
     db = get_database()
     student_service = StudentService(db)
     group_service = GroupService(db)
+    request_service = GroupRequestService(db)
 
     student = await student_service.get_by_uid(current_user.uid)
     if not student:
@@ -88,6 +89,8 @@ async def create_group(
 
     group = await group_service.create_group(body)
     await student_service.set_group(current_user.uid, group["id"])
+    if student.get("regNo"):
+        await request_service.delete_all_for_student(student["regNo"])
 
     return {"message": "Group created successfully.", "group": serialize_for_api(group)}
 
@@ -172,6 +175,7 @@ async def join_group_by_code(
     db = get_database()
     student_service = StudentService(db)
     group_service = GroupService(db)
+    request_service = GroupRequestService(db)
 
     student = await student_service.get_by_uid(current_user.uid)
     if not student:
@@ -202,6 +206,8 @@ async def join_group_by_code(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     await student_service.set_group(current_user.uid, updated_group["id"])
+    if student.get("regNo"):
+        await request_service.delete_all_for_student(student["regNo"])
 
     return {"message": "Joined group successfully", "group": serialize_for_api(updated_group)}
 

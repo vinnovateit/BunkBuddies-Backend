@@ -48,6 +48,11 @@ async def request_join_group(
     if not student:
         raise HTTPException(status_code=400, detail="Student doesn't exist")
 
+    if student.get("groupId"):
+        if student.get("regNo"):
+            await request_service.delete_all_for_student(student["regNo"])
+        raise HTTPException(status_code=400, detail="You are already in a group")
+
     existing = await request_service.get_existing(id, student["regNo"])
     if existing:
         raise HTTPException(status_code=400, detail="You have already sent a request")
@@ -96,6 +101,13 @@ async def update_request(
         raise HTTPException(status_code=400, detail="Student doesn't exist")
 
     if action == GroupRequestStatus.ACCEPTED:
+        if student.get("groupId"):
+            await request_service.delete_all_for_student(student["regNo"])
+            raise HTTPException(
+                status_code=400,
+                detail="Student is already in a group. Pending requests were cleared.",
+            )
+
         try:
             if await group_service.is_full(group):
                 raise HTTPException(status_code=400, detail="Group is full")
