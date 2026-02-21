@@ -209,6 +209,9 @@ class GroupService:
 
         hydrated: list[dict] = []
         for group in groups:
+            if not self.is_hostel_compatible(student, group):
+                continue
+
             if student_uid:
                 if group.get("adminUID") == student_uid or student_uid in self.get_student_uids(group):
                     continue
