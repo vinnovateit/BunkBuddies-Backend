@@ -93,6 +93,10 @@ class GroupService:
         return refreshed
 
     async def generate_code(self, group: dict) -> str:
+        existing_code = group.get("groupCode")
+        if existing_code and not await self.is_group_code_expired(group):
+            return existing_code
+
         code = await generate_group_code(self.collection)
         await self.collection.update_one(
             {"_id": group["_id"]},
@@ -101,6 +105,9 @@ class GroupService:
         return code
 
     async def is_group_code_expired(self, group: dict) -> bool:
+        if not group.get("groupCode"):
+            return True
+
         created_at = group.get("createdAt")
         if not created_at:
             return True
