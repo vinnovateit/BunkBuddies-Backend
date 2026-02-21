@@ -217,3 +217,40 @@ async def leave_group(current_user: CurrentAuthUser = Depends(get_current_auth_u
     await student_service.set_group(current_user.uid, None)
 
     return {"message": "Left group successfully"}
+
+
+from fastapi import Body
+
+@router.post("/removeMember")
+async def remove_member_from_group(
+    payload: dict = Body(...),
+    current_user: CurrentAuthUser = Depends(get_current_auth_user),
+):
+    db = get_database()
+    student_service = StudentService(db)
+    group_service = GroupService(db)
+
+    group_id = payload.get("groupId")
+    member_uid = payload.get("memberUID")
+    if not group_id or not member_uid:
+        raise HTTPException(status_code=400, detail="groupId and memberUID are required")
+
+    # Get admin's group
+    group = await group_service.get_by_id(group_id)
+    if not group:
+        raise HTTPException(status_code=400, detail="Group does not exist")
+
+    if group["adminUID"] != current_user.uid:
+        raise HTTPException(status_code=403, detail="Only the group admin can remove members")
+
+    if member_uid == current_user.uid:
+        raise HTTPException(status_code=400, detail="Admin cannot remove themselves")
+
+    if member_uid not in group.get("studentUids", []):
+        raise HTTPException(status_code=404, detail="Member not found in group")
+
+    # Remove member from group
+    await group_service.remove_student(group, member_uid)
+    await student_service.set_group(member_uid, None)
+
+    return {"message": "Member removed from group successfully"}
