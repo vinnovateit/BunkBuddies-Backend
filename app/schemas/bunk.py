@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+import re
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -44,6 +45,25 @@ class UpdateStudentRequest(BaseModel):
     CGPA: Optional[float] = Field(default=None, ge=0, le=10)
     description: Optional[str] = None
     hostelType: Optional[HostelType] = None
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+
+        trimmed = value.strip()
+        if not trimmed:
+            return None
+
+        digits = re.sub(r"\D", "", trimmed)
+        if digits.startswith("91") and len(digits) == 12:
+            digits = digits[2:]
+
+        if not re.fullmatch(r"[6-9]\d{9}", digits):
+            raise ValueError("Contact number must be a valid 10-digit Indian mobile number")
+
+        return f"+91{digits}"
 
 
 class CreateGroupRequest(BaseModel):
