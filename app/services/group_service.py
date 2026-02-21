@@ -157,6 +157,14 @@ class GroupService:
 
     async def list_groups_for_student(self, student: dict, query: GroupQueryRequest) -> list[dict]:
         mongo_query = {"hostelType": student["hostelType"]}
+        student_uid = student.get("firebaseUID")
+        student_group_id = object_id_from_str(student.get("groupId", ""))
+
+        if student_uid:
+            mongo_query["adminUID"] = {"$ne": student_uid}
+            mongo_query["studentUids"] = {"$ne": student_uid}
+        if student_group_id:
+            mongo_query["_id"] = {"$ne": student_group_id}
 
         if query.type:
             mongo_query["type"] = query.type.value
@@ -177,6 +185,12 @@ class GroupService:
 
         hydrated: list[dict] = []
         for group in groups:
+            if student_uid:
+                if group.get("adminUID") == student_uid or student_uid in self.get_student_uids(group):
+                    continue
+            if student_group_id and group.get("_id") == student_group_id:
+                continue
+
             students = await self.student_service.list_by_uids(self.get_student_uids(group))
             admin = next((s for s in students if s.get("firebaseUID") == group.get("adminUID")), None)
 
