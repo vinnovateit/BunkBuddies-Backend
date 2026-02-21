@@ -72,3 +72,23 @@ async def generate_group_code(groups_collection) -> str:
         existing = await groups_collection.find_one({"groupCode": code})
         if not existing:
             return code
+
+
+def serialize_for_api(value):
+    if isinstance(value, ObjectId):
+        return str(value)
+
+    if isinstance(value, list):
+        return [serialize_for_api(item) for item in value]
+
+    if isinstance(value, dict):
+        serialized = {}
+        for key, item in value.items():
+            if key == "_id":
+                if "id" not in value:
+                    serialized["id"] = str(item)
+                continue
+            serialized[key] = serialize_for_api(item)
+        return serialized
+
+    return value
