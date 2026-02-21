@@ -96,6 +96,10 @@ async def update_request(
         raise HTTPException(status_code=400, detail="Student doesn't exist")
 
     if action == GroupRequestStatus.ACCEPTED:
+        # Check if student is already in another group
+        if student.get("groupId"):
+            raise HTTPException(status_code=400, detail="User is already a member of another group")
+
         try:
             if await group_service.is_full(group):
                 raise HTTPException(status_code=400, detail="Group is full")
