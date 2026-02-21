@@ -20,6 +20,16 @@ def _extract_reg_no_from_email(email: str) -> str | None:
     return None
 
 
+def _fallback_reg_no(email: str, google_id: str | None) -> str:
+    local_part = email.split("@")[0].upper()
+    normalized = re.sub(r"[^A-Z0-9]", "", local_part)
+    if normalized:
+        return normalized
+    if google_id:
+        return f"UID{google_id}"
+    return "UNKNOWN"
+
+
 def _extract_name(user_info: dict) -> str:
     full_name = (user_info.get("name") or "").strip()
     if full_name:
@@ -127,19 +137,23 @@ async def google_callback(
             "photoURL": user_info.get("picture"),
         }
 
-        if reg_no:
-            student_payload["regNo"] = reg_no
+        resolved_reg_no = reg_no or _fallback_reg_no(email, user_info.get("id"))
+        student_payload["regNo"] = resolved_reg_no
 
         if existing_student:
             await student_collection.update_one(
                 {"firebaseUID": user_info.get("id")},
                 {"$set": student_payload},
             )
-        elif reg_no:
-            # Create student profile automatically only when regNo can be inferred from email
-            # and no profile exists yet for this UID.
-            duplicate_reg = await student_collection.find_one({"regNo": reg_no})
-            if not duplicate_reg:
+        else:
+            # Ensure there is always a student profile for logged-in users.
+            duplicate_reg = await student_collection.find_one({"regNo": resolved_reg_no})
+            if duplicate_reg:
+                await student_collection.update_one(
+                    {"_id": duplicate_reg["_id"]},
+                    {"$set": student_payload},
+                )
+            else:
                 await student_collection.insert_one(student_payload)
 
         # Create JWT token
@@ -155,7 +169,7 @@ async def google_callback(
             "details": {
                 "email": email,
                 "name": name,
-                "regNo": reg_no,
+                "regNo": resolved_reg_no,
                 "firebaseUID": user_info.get("id"),
                 "photoURL": user_info.get("picture"),
             },
