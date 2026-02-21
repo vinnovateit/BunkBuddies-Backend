@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="color: #2c3e50;">New Roommate Request! 🏠</h2>
+        <p>Hi <b>{{ admin_name }}</b>,</p>
+        
+        <p>A student has just requested to join your group, <b>{{ group_name }}</b>.</p>
+        
+        <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;">
+            <h3 style="margin-top: 0;">Student Details:</h3>
+            <ul style="margin-bottom: 0;">
+                <li><b>Name:</b> {{ sender_name }}</li>
+                <li><b>Registration Number:</b> {{ sender_reg }}</li>
+            </ul>
+        </div>
+        
+        <p>Please log in to BunkBuddies to review and accept or reject this request.</p>
+        <br>
+        <p style="font-size: 12px; color: #888;">This is an automated message from BunkBuddies.</p>
+    </div>
+</body>
+</html>

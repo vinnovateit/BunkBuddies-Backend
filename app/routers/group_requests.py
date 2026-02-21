@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 
 from app.auth.dependencies import get_current_auth_user
 from app.database import get_database
 from app.schemas import CurrentAuthUser, GroupRequestStatus
 from app.services import GroupRequestService, GroupService, StudentService
 from app.services.bunk_common import serialize_for_api
+from app.utils.mailer import mailer
 
 router = APIRouter(prefix="/groupRequest", tags=["groupRequest"])
 
@@ -33,6 +34,7 @@ async def list_group_requests(current_user: CurrentAuthUser = Depends(get_curren
 @router.post("/joinRequest/{id}")
 async def request_join_group(
     id: str,
+    background_tasks: BackgroundTasks,
     current_user: CurrentAuthUser = Depends(get_current_auth_user),
 ):
     db = get_database()
@@ -78,12 +80,29 @@ async def request_join_group(
         raise HTTPException(status_code=400, detail=str(exc))
 
     request = await request_service.create_request(id, student["regNo"])
+    
+    admin = await student_service.get_by_uid(group["adminUID"])
+    if admin and admin.get("email"):
+        background_tasks.add_task(
+            mailer,
+            template_path="app/templates/emails/request_received.html",
+            email_to=admin["email"],
+            subject=f"New Roommate Request from {student['regNo']} 🏠",
+            context={
+                "admin_name": admin.get("name", "Admin"),
+                "sender_name": student.get("name", "A Student"),
+                "sender_reg": student["regNo"],
+                "group_name": group.get("groupName", "your group")
+            }
+        )
+
     return {"message": "Request sent successfully", "request": serialize_for_api(request)}
 
 
 @router.post("/updateRequest/{id}/{action}")
 async def update_request(
     id: str,
+    background_tasks: BackgroundTasks,
     action: GroupRequestStatus,
     current_user: CurrentAuthUser = Depends(get_current_auth_user),
 ):
@@ -137,6 +156,17 @@ async def update_request(
             raise HTTPException(status_code=400, detail=str(exc))
         await student_service.set_group(student["firebaseUID"], updated_group["id"])
         await request_service.delete_all_for_student(student["regNo"])
+        if student.get("email"):
+            background_tasks.add_task(
+                mailer,
+                template_path="app/templates/emails/request_accepted.html",
+                email_to=student["email"],
+                subject="Roommate Request Accepted! 🎉",
+                context={
+                    "student_name": student.get("name", "Student"),
+                    "group_name": group.get("groupName", "the group")
+                }
+            )
         return {
             "message": "Request updated successfully",
             "request": {
