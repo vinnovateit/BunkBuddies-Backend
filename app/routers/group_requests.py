@@ -52,11 +52,14 @@ async def request_join_group(
     if existing:
         raise HTTPException(status_code=400, detail="You have already sent a request")
 
-    if student.get("firebaseUID") in group.get("studentUids", []):
+    if student.get("firebaseUID") in group_service.get_student_uids(group):
         raise HTTPException(status_code=400, detail="You are already in this group")
 
-    if await group_service.is_full(group):
-        raise HTTPException(status_code=400, detail="Group is full")
+    try:
+        if await group_service.is_full(group):
+            raise HTTPException(status_code=400, detail="Group is full")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     request = await request_service.create_request(id, student["regNo"])
     return {"message": "Request sent successfully", "request": serialize_for_api(request)}
@@ -93,10 +96,16 @@ async def update_request(
         raise HTTPException(status_code=400, detail="Student doesn't exist")
 
     if action == GroupRequestStatus.ACCEPTED:
-        if await group_service.is_full(group):
-            raise HTTPException(status_code=400, detail="Group is full")
+        try:
+            if await group_service.is_full(group):
+                raise HTTPException(status_code=400, detail="Group is full")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
 
-        updated_group = await group_service.add_student(group, student["firebaseUID"])
+        try:
+            updated_group = await group_service.add_student(group, student["firebaseUID"])
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
         await student_service.set_group(student["firebaseUID"], updated_group["id"])
         await request_service.delete_all_for_student(student["regNo"])
         return {

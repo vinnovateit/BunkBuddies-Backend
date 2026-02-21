@@ -21,6 +21,15 @@ class GroupService:
         self.student_service = StudentService(db)
         self.request_collection = db["group_requests"]
 
+    @staticmethod
+    def get_student_uids(group: dict) -> list[str]:
+        raw = group.get("studentUids")
+        if isinstance(raw, list):
+            return [uid for uid in raw if isinstance(uid, str) and uid.strip()]
+        if isinstance(raw, str) and raw.strip():
+            return [raw.strip()]
+        return []
+
     async def get_by_id(self, group_id: str) -> Optional[dict]:
         oid = object_id_from_str(group_id)
         if not oid:
@@ -72,23 +81,39 @@ class GroupService:
         return result.deleted_count > 0
 
     async def is_full(self, group: dict) -> bool:
-        return len(group.get("studentUids", [])) >= size_to_capacity(group["groupSize"])
+        return len(self.get_student_uids(group)) >= size_to_capacity(group.get("groupSize"))
 
     async def add_student(self, group: dict, student_uid: str) -> dict:
+        normalized_uids = self.get_student_uids(group)
+        await self.collection.update_one(
+            {"_id": group["_id"]},
+            {"$set": {"studentUids": normalized_uids}},
+        )
+
         await self.collection.update_one(
             {"_id": group["_id"]},
             {"$addToSet": {"studentUids": student_uid}},
         )
         refreshed = await self.collection.find_one({"_id": group["_id"]})
+        if not refreshed:
+            raise ValueError("Group no longer exists")
         refreshed["id"] = str(refreshed["_id"])
         return refreshed
 
     async def remove_student(self, group: dict, student_uid: str) -> dict:
+        normalized_uids = self.get_student_uids(group)
+        await self.collection.update_one(
+            {"_id": group["_id"]},
+            {"$set": {"studentUids": normalized_uids}},
+        )
+
         await self.collection.update_one(
             {"_id": group["_id"]},
             {"$pull": {"studentUids": student_uid}},
         )
         refreshed = await self.collection.find_one({"_id": group["_id"]})
+        if not refreshed:
+            raise ValueError("Group no longer exists")
         refreshed["id"] = str(refreshed["_id"])
         return refreshed
 
@@ -152,7 +177,7 @@ class GroupService:
 
         hydrated: list[dict] = []
         for group in groups:
-            students = await self.student_service.list_by_uids(group.get("studentUids", []))
+            students = await self.student_service.list_by_uids(self.get_student_uids(group))
             admin = next((s for s in students if s.get("firebaseUID") == group.get("adminUID")), None)
 
             if query.vacancy is not None:
