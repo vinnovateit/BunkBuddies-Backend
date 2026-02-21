@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -111,7 +111,24 @@ class GroupService:
         created_at = group.get("createdAt")
         if not created_at:
             return True
-        return now_utc() - created_at > timedelta(minutes=15)
+
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            except ValueError:
+                return True
+
+        if not isinstance(created_at, datetime):
+            return True
+
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+
+        current_time = now_utc()
+        if current_time.tzinfo is None:
+            current_time = current_time.replace(tzinfo=timezone.utc)
+
+        return current_time - created_at > timedelta(minutes=15)
 
     async def list_groups_for_student(self, student: dict, query: GroupQueryRequest) -> list[dict]:
         mongo_query = {"hostelType": student["hostelType"]}
