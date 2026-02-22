@@ -72,23 +72,26 @@ async def list_groups(
     if not student.get("hostelType"):
         raise HTTPException(status_code=400, detail="Student has not selected a hostel type.")
 
-    query = GroupQueryRequest(
-        offset=offset,
-        limit=limit,
-        page=page,
-        pageSize=pageSize,
-        search=search,
-        sortBy=sortBy,
-        sortOrder=sortOrder,
-        type=type,
-        groupSize=groupSize,
-        block1=block1,
-        block2=block2,
-        block3=block3,
-        vacancy=vacancy,
-        minCGPA=minCGPA,
-        maxCGPA=maxCGPA,
-    )
+    query_payload = {
+        "offset": offset,
+        "limit": limit,
+        "page": page,
+        "pageSize": pageSize,
+        "search": search,
+        "sortBy": sortBy,
+        "type": type,
+        "groupSize": groupSize,
+        "block1": block1,
+        "block2": block2,
+        "block3": block3,
+        "vacancy": vacancy,
+        "minCGPA": minCGPA,
+        "maxCGPA": maxCGPA,
+    }
+    if sortOrder is not None:
+        query_payload["sortOrder"] = sortOrder
+
+    query = GroupQueryRequest(**query_payload)
 
     result = await group_service.list_groups_for_student(student, query)
     groups = result.get("groups", [])
