@@ -193,17 +193,25 @@ class GroupService:
 
         if query.type:
             mongo_query["type"] = query.type.value
+
+        selected_group_sizes: list[str] = []
         if query.groupSize:
-            mongo_query["groupSize"] = query.groupSize.value
-        if query.block1:
-            mongo_query["$or"] = [{"block1": query.block1}, {"block2": query.block1}, {"block3": query.block1}]
-        if query.block2:
+            selected_group_sizes.append(query.groupSize.value)
+        if query.groupSizes:
+            selected_group_sizes.extend(size.value for size in query.groupSizes)
+        if selected_group_sizes:
+            mongo_query["groupSize"] = {"$in": list(dict.fromkeys(selected_group_sizes))}
+
+        selected_blocks: list[str] = []
+        selected_blocks.extend(
+            str(value).strip() for value in [query.block1, query.block2, query.block3] if str(value or "").strip()
+        )
+        if query.blocks:
+            selected_blocks.extend(str(value).strip() for value in query.blocks if str(value or "").strip())
+        if selected_blocks:
+            block_values = list(dict.fromkeys(selected_blocks))
             mongo_query.setdefault("$and", []).append(
-                {"$or": [{"block1": query.block2}, {"block2": query.block2}, {"block3": query.block2}]}
-            )
-        if query.block3:
-            mongo_query.setdefault("$and", []).append(
-                {"$or": [{"block1": query.block3}, {"block2": query.block3}, {"block3": query.block3}]}
+                {"$or": [{"block1": {"$in": block_values}}, {"block2": {"$in": block_values}}, {"block3": {"$in": block_values}}]}
             )
 
         groups = await self.collection.find(mongo_query).to_list(length=1000)

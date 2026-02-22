@@ -107,9 +107,11 @@ class GroupQueryRequest(BaseModel):
     search: Optional[str] = None
     type: Optional[GroupType] = None
     groupSize: Optional[GroupSize] = None
+    groupSizes: list[GroupSize] = Field(default_factory=list)
     block1: Optional[str] = None
     block2: Optional[str] = None
     block3: Optional[str] = None
+    blocks: list[str] = Field(default_factory=list)
     vacancy: Optional[int] = None
     minCGPA: Optional[float] = None
     maxCGPA: Optional[float] = None
@@ -125,6 +127,22 @@ class GroupQueryRequest(BaseModel):
     @classmethod
     def min_one(cls, value: int) -> int:
         return max(value, 1)
+
+    @field_validator("blocks")
+    @classmethod
+    def normalize_blocks(cls, values: list[str]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            text = str(value or "").strip()
+            if not text:
+                continue
+            key = text.upper()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(text)
+        return normalized
 
 
 class CurrentAuthUser(BaseModel):

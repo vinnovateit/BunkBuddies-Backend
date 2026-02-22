@@ -42,6 +42,24 @@ def _room_sizes_for_hostel(hostel_type: str | None) -> list[str]:
     return [str(value) for value in sorted(set(MH_ROOM_SIZES) | set(LH_ROOM_SIZES))]
 
 
+def _parse_multi_query_values(values: list[str] | None) -> list[str]:
+    if not values:
+        return []
+    parsed: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        for part in str(value or "").split(","):
+            text = part.strip()
+            if not text:
+                continue
+            key = text.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            parsed.append(text)
+    return parsed
+
+
 @router.get("/listGroups")
 async def list_groups(
     offset: int = Query(0),
@@ -53,9 +71,11 @@ async def list_groups(
     sortOrder: str | None = Query(None),
     type: str | None = Query(None),
     groupSize: str | None = Query(None),
+    groupSizes: list[str] | None = Query(None),
     block1: str | None = Query(None),
     block2: str | None = Query(None),
     block3: str | None = Query(None),
+    blocks: list[str] | None = Query(None),
     vacancy: int | None = Query(None),
     minCGPA: float | None = Query(None),
     maxCGPA: float | None = Query(None),
@@ -81,9 +101,11 @@ async def list_groups(
         "sortBy": sortBy,
         "type": type,
         "groupSize": groupSize,
+        "groupSizes": _parse_multi_query_values(groupSizes),
         "block1": block1,
         "block2": block2,
         "block3": block3,
+        "blocks": _parse_multi_query_values(blocks),
         "vacancy": vacancy,
         "minCGPA": minCGPA,
         "maxCGPA": maxCGPA,
