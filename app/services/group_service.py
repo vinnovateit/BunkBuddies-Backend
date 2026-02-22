@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.schemas import GroupQueryRequest, GroupRequestStatus
 from app.services.bunk_common import (
     generate_group_code,
+    is_reg_no_junior_to,
     now_utc,
     object_id_from_str,
     size_to_capacity,
@@ -222,6 +223,10 @@ class GroupService:
             admin = next((s for s in students if s.get("firebaseUID") == group.get("adminUID")), None)
             if not admin and group.get("adminUID"):
                 admin = await self.student_service.get_by_uid(group["adminUID"])
+
+            # Juniors should not see rooms created by seniors.
+            if admin and is_reg_no_junior_to(student.get("regNo"), admin.get("regNo")) is True:
+                continue
 
             if query.vacancy is not None:
                 capacity = size_to_capacity(group["groupSize"])
