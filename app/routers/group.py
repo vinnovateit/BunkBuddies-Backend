@@ -9,7 +9,7 @@ from app.schemas import (
     UpdateGroupRequest,
 )
 from app.services import GroupRequestService, GroupService, StudentService
-from app.services.bunk_common import serialize_for_api, verify_blocks
+from app.services.bunk_common import is_reg_no_junior_to, serialize_for_api, verify_blocks
 
 router = APIRouter(prefix="/group", tags=["group"])
 
@@ -196,6 +196,10 @@ async def join_group_by_code(
         raise HTTPException(status_code=400, detail="Group does not exist")
     if not group_service.is_hostel_compatible(student, group):
         raise HTTPException(status_code=403, detail="You can only join rooms from your own hostel type.")
+
+    admin = await student_service.get_by_uid(group.get("adminUID"))
+    if admin and is_reg_no_junior_to(student.get("regNo"), admin.get("regNo")) is True:
+        raise HTTPException(status_code=403, detail="Juniors cannot join rooms created by seniors.")
 
     group_student_uids = group_service.get_student_uids(group)
     if current_user.uid == group["adminUID"] or current_user.uid in group_student_uids:

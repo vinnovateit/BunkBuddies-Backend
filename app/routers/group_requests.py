@@ -4,7 +4,7 @@ from app.auth.dependencies import get_current_auth_user
 from app.database import get_database
 from app.schemas import CurrentAuthUser, GroupRequestStatus
 from app.services import GroupRequestService, GroupService, StudentService
-from app.services.bunk_common import serialize_for_api
+from app.services.bunk_common import is_reg_no_junior_to, serialize_for_api
 
 router = APIRouter(prefix="/groupRequest", tags=["groupRequest"])
 
@@ -64,6 +64,10 @@ async def request_join_group(
             detail="You can only request to join rooms from your own hostel type.",
         )
 
+    admin = await student_service.get_by_uid(group.get("adminUID"))
+    if admin and is_reg_no_junior_to(student.get("regNo"), admin.get("regNo")) is True:
+        raise HTTPException(status_code=403, detail="Juniors cannot join rooms created by seniors.")
+
     existing = await request_service.get_existing(id, student["regNo"])
     if existing:
         raise HTTPException(status_code=400, detail="You have already sent a request")
@@ -114,6 +118,10 @@ async def update_request(
     if action == GroupRequestStatus.ACCEPTED:
         if not group_service.is_hostel_compatible(student, group):
             raise HTTPException(status_code=400, detail="Student hostel type does not match this room.")
+
+        admin = await student_service.get_by_uid(group.get("adminUID"))
+        if admin and is_reg_no_junior_to(student.get("regNo"), admin.get("regNo")) is True:
+            raise HTTPException(status_code=403, detail="Juniors cannot join rooms created by seniors.")
 
         existing_group = await group_service.get_any_group_for_student_uid(student.get("firebaseUID"))
         if existing_group:

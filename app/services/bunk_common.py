@@ -33,6 +33,7 @@ MH_BLOCKS = {
     "T",
 }
 LH_BLOCKS = {"A", "B", "C", "D", "E", "E Annex", "F", "G", "H", "J"}
+REG_NO_PATTERN = re.compile(r"^(\d{2})[A-Z]{3}\d{4}$", flags=re.IGNORECASE)
 
 
 def size_to_capacity(size: GroupSize | str) -> int:
@@ -55,6 +56,30 @@ def verify_blocks(hostel_type: HostelType, group_data: dict) -> bool:
         if value and value not in valid_blocks:
             return False
     return True
+
+
+def reg_no_joining_year(reg_no: str | None) -> int | None:
+    cleaned = str(reg_no or "").strip().upper()
+    match = REG_NO_PATTERN.fullmatch(cleaned)
+    if not match:
+        return None
+    return 2000 + int(match.group(1))
+
+
+def is_reg_no_senior_to(candidate_reg_no: str | None, other_reg_no: str | None) -> bool | None:
+    candidate_year = reg_no_joining_year(candidate_reg_no)
+    other_year = reg_no_joining_year(other_reg_no)
+    if candidate_year is None or other_year is None:
+        return None
+    return candidate_year < other_year
+
+
+def is_reg_no_junior_to(candidate_reg_no: str | None, other_reg_no: str | None) -> bool | None:
+    candidate_year = reg_no_joining_year(candidate_reg_no)
+    other_year = reg_no_joining_year(other_reg_no)
+    if candidate_year is None or other_year is None:
+        return None
+    return candidate_year > other_year
 
 
 def now_utc() -> datetime:
