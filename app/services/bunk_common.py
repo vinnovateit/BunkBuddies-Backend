@@ -32,7 +32,22 @@ MH_BLOCKS = {
     "S",
     "T",
 }
-LH_BLOCKS = {"A", "B", "C", "D", "E", "E Annex", "F", "G", "H", "J"}
+LH_BLOCKS = {
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "E Annex",
+    "F",
+    "G",
+    "G Annex",
+    "H",
+    "J",
+    "RGT",
+    "LH1",
+    "GH",
+}
 REG_NO_PATTERN = re.compile(r"^(\d{2})[A-Z]{3}\d{4}$", flags=re.IGNORECASE)
 
 
