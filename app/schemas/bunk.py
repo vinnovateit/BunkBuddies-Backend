@@ -22,6 +22,7 @@ class GroupSize(str, Enum):
     TWO = "2-Bedded"
     THREE = "3-Bedded"
     FOUR = "4-Bedded"
+    FIVE = "5-Bedded"
     SIX = "6-Bedded"
     EIGHT = "8-Bedded"
 
@@ -30,6 +31,16 @@ class GroupRequestStatus(str, Enum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
+
+
+class GroupSortBy(str, Enum):
+    VACANCY = "vacancy"
+    CGPA = "cgpa"
+
+
+class SortOrder(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
 
 
 class SignupStudentRequest(BaseModel):
@@ -91,19 +102,47 @@ class UpdateGroupRequest(BaseModel):
 class GroupQueryRequest(BaseModel):
     offset: int = 0
     limit: int = 20
+    page: int = 1
+    pageSize: int = 20
+    search: Optional[str] = None
     type: Optional[GroupType] = None
     groupSize: Optional[GroupSize] = None
+    groupSizes: list[GroupSize] = Field(default_factory=list)
     block1: Optional[str] = None
     block2: Optional[str] = None
     block3: Optional[str] = None
+    blocks: list[str] = Field(default_factory=list)
     vacancy: Optional[int] = None
     minCGPA: Optional[float] = None
     maxCGPA: Optional[float] = None
+    sortBy: Optional[GroupSortBy] = None
+    sortOrder: SortOrder = SortOrder.DESC
 
     @field_validator("offset", "limit")
     @classmethod
     def non_negative(cls, value: int) -> int:
         return max(value, 0)
+
+    @field_validator("page", "pageSize")
+    @classmethod
+    def min_one(cls, value: int) -> int:
+        return max(value, 1)
+
+    @field_validator("blocks")
+    @classmethod
+    def normalize_blocks(cls, values: list[str]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            text = str(value or "").strip()
+            if not text:
+                continue
+            key = text.upper()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(text)
+        return normalized
 
 
 class CurrentAuthUser(BaseModel):

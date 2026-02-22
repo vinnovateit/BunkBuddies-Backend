@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.schemas import GroupQueryRequest, GroupRequestStatus
 from app.services.bunk_common import (
     generate_group_code,
+    is_reg_no_junior_to,
     now_utc,
     object_id_from_str,
     size_to_capacity,
@@ -179,7 +180,7 @@ class GroupService:
 
         return current_time - created_at > timedelta(minutes=15)
 
-    async def list_groups_for_student(self, student: dict, query: GroupQueryRequest) -> list[dict]:
+    async def list_groups_for_student(self, student: dict, query: GroupQueryRequest) -> dict:
         mongo_query = {"hostelType": student["hostelType"]}
         student_uid = student.get("firebaseUID")
         student_group_id = object_id_from_str(student.get("groupId", ""))
@@ -192,20 +193,29 @@ class GroupService:
 
         if query.type:
             mongo_query["type"] = query.type.value
+
+        selected_group_sizes: list[str] = []
         if query.groupSize:
-            mongo_query["groupSize"] = query.groupSize.value
-        if query.block1:
-            mongo_query["$or"] = [{"block1": query.block1}, {"block2": query.block1}, {"block3": query.block1}]
-        if query.block2:
+            selected_group_sizes.append(query.groupSize.value)
+        if query.groupSizes:
+            selected_group_sizes.extend(size.value for size in query.groupSizes)
+        if selected_group_sizes:
+            mongo_query["groupSize"] = {"$in": list(dict.fromkeys(selected_group_sizes))}
+
+        selected_blocks: list[str] = []
+        selected_blocks.extend(
+            str(value).strip() for value in [query.block1, query.block2, query.block3] if str(value or "").strip()
+        )
+        if query.blocks:
+            selected_blocks.extend(str(value).strip() for value in query.blocks if str(value or "").strip())
+        if selected_blocks:
+            block_values = list(dict.fromkeys(selected_blocks))
             mongo_query.setdefault("$and", []).append(
-                {"$or": [{"block1": query.block2}, {"block2": query.block2}, {"block3": query.block2}]}
-            )
-        if query.block3:
-            mongo_query.setdefault("$and", []).append(
-                {"$or": [{"block1": query.block3}, {"block2": query.block3}, {"block3": query.block3}]}
+                {"$or": [{"block1": {"$in": block_values}}, {"block2": {"$in": block_values}}, {"block3": {"$in": block_values}}]}
             )
 
-        groups = await self.collection.find(mongo_query).skip(query.offset).limit(query.limit).to_list(length=query.limit)
+        groups = await self.collection.find(mongo_query).to_list(length=1000)
+        search_text = str(query.search or "").strip().lower()
 
         hydrated: list[dict] = []
         for group in groups:
@@ -220,10 +230,18 @@ class GroupService:
 
             students = await self.student_service.list_by_uids(self.get_student_uids(group))
             admin = next((s for s in students if s.get("firebaseUID") == group.get("adminUID")), None)
+            if not admin and group.get("adminUID"):
+                admin = await self.student_service.get_by_uid(group["adminUID"])
+
+            # Juniors should not see rooms created by seniors.
+            if admin and is_reg_no_junior_to(student.get("regNo"), admin.get("regNo")) is True:
+                continue
+
+            capacity = size_to_capacity(group["groupSize"])
+            available_beds = max(capacity - len(students), 0)
 
             if query.vacancy is not None:
-                capacity = size_to_capacity(group["groupSize"])
-                if capacity - len(students) < query.vacancy:
+                if available_beds < query.vacancy:
                     continue
 
             if query.minCGPA is not None and (not admin or admin.get("CGPA") is None or admin["CGPA"] < query.minCGPA):
@@ -231,17 +249,81 @@ class GroupService:
             if query.maxCGPA is not None and (not admin or admin.get("CGPA") is None or admin["CGPA"] > query.maxCGPA):
                 continue
 
+            if search_text:
+                searchable_parts = [
+                    str(group.get("groupName") or ""),
+                    str(admin.get("name") if admin else ""),
+                    str(admin.get("regNo") if admin else ""),
+                ]
+                searchable_parts.extend(str(member.get("name") or "") for member in students)
+                searchable_parts.extend(str(member.get("regNo") or "") for member in students)
+                searchable_text = " ".join(searchable_parts).lower()
+                if search_text not in searchable_text:
+                    continue
+
             group["id"] = str(group["_id"])
             group["students"] = students
             group["adminCGPA"] = admin.get("CGPA") if admin else None
+            group["adminName"] = admin.get("name") if admin else None
+            group["adminRegNo"] = admin.get("regNo") if admin else None
+            group["availableBeds"] = available_beds
             hydrated.append(group)
 
-        hydrated.sort(
-            key=lambda g: (
-                -(g["adminCGPA"] if g["adminCGPA"] is not None else -1),
+        sort_by = query.sortBy.value if query.sortBy else ""
+        sort_order = query.sortOrder.value if query.sortOrder else "desc"
+        reverse = sort_order != "asc"
+
+        if sort_by == "vacancy":
+            hydrated.sort(
+                key=lambda g: (
+                    g["availableBeds"] if g.get("availableBeds") is not None else -1,
+                    str(g.get("groupName") or "").lower(),
+                ),
+                reverse=reverse,
             )
-        )
-        return hydrated
+        elif sort_by == "cgpa":
+            hydrated.sort(
+                key=lambda g: (
+                    g["adminCGPA"] if g.get("adminCGPA") is not None else -1,
+                    str(g.get("groupName") or "").lower(),
+                ),
+                reverse=reverse,
+            )
+        else:
+            hydrated.sort(
+                key=lambda g: (
+                    -(g["adminCGPA"] if g["adminCGPA"] is not None else -1),
+                    str(g.get("groupName") or "").lower(),
+                )
+            )
+
+        total_count = len(hydrated)
+        page = max(query.page, 1)
+        page_size = max(query.pageSize, 1)
+        if query.page == 1 and query.pageSize == 20 and (query.offset > 0 or query.limit != 20):
+            page_size = max(query.limit, 1)
+            page = query.offset // page_size + 1
+            start = query.offset
+        else:
+            start = (page - 1) * page_size
+        end = start + page_size
+
+        total_pages = max((total_count + page_size - 1) // page_size, 1)
+        safe_page = min(page, total_pages)
+        if safe_page != page and not (query.page == 1 and query.pageSize == 20 and (query.offset > 0 or query.limit != 20)):
+            start = (safe_page - 1) * page_size
+            end = start + page_size
+        paged_groups = hydrated[start:end]
+
+        return {
+            "groups": paged_groups,
+            "totalCount": total_count,
+            "page": safe_page,
+            "pageSize": page_size,
+            "totalPages": total_pages,
+            "hasPrevPage": safe_page > 1,
+            "hasNextPage": safe_page < total_pages,
+        }
 
     async def get_pending_requests_for_admin(self, admin_uid: str) -> list[dict]:
         groups = await self.collection.find({"adminUID": admin_uid}).to_list(length=500)
