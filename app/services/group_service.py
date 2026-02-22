@@ -241,6 +241,8 @@ class GroupService:
             group["id"] = str(group["_id"])
             group["students"] = students
             group["adminCGPA"] = admin.get("CGPA") if admin else None
+            group["adminName"] = admin.get("name") if admin else None
+            group["adminRegNo"] = admin.get("regNo") if admin else None
             hydrated.append(group)
 
         hydrated.sort(
