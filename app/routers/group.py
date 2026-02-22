@@ -5,19 +5,52 @@ from app.database import get_database
 from app.schemas import (
     CreateGroupRequest,
     CurrentAuthUser,
+    GroupType,
     GroupQueryRequest,
+    HostelType,
     UpdateGroupRequest,
 )
 from app.services import GroupRequestService, GroupService, StudentService
-from app.services.bunk_common import is_reg_no_junior_to, serialize_for_api, verify_blocks
+from app.services.bunk_common import (
+    LH_BLOCKS,
+    LH_ROOM_SIZES,
+    MH_BLOCKS,
+    MH_ROOM_SIZES,
+    is_reg_no_junior_to,
+    serialize_for_api,
+    verify_blocks,
+)
 
 router = APIRouter(prefix="/group", tags=["group"])
+
+
+def _blocks_for_hostel(hostel_type: str | None) -> list[str]:
+    normalized = str(hostel_type or "").upper()
+    if normalized == HostelType.MH.value:
+        return sorted(MH_BLOCKS)
+    if normalized == HostelType.LH.value:
+        return sorted(LH_BLOCKS)
+    return sorted(MH_BLOCKS | LH_BLOCKS)
+
+
+def _room_sizes_for_hostel(hostel_type: str | None) -> list[str]:
+    normalized = str(hostel_type or "").upper()
+    if normalized == HostelType.MH.value:
+        return [str(value) for value in MH_ROOM_SIZES]
+    if normalized == HostelType.LH.value:
+        return [str(value) for value in LH_ROOM_SIZES]
+    return [str(value) for value in sorted(set(MH_ROOM_SIZES) | set(LH_ROOM_SIZES))]
 
 
 @router.get("/listGroups")
 async def list_groups(
     offset: int = Query(0),
     limit: int = Query(20),
+    page: int = Query(1),
+    pageSize: int = Query(20),
+    search: str | None = Query(None),
+    sortBy: str | None = Query(None),
+    sortOrder: str | None = Query(None),
     type: str | None = Query(None),
     groupSize: str | None = Query(None),
     block1: str | None = Query(None),
@@ -42,6 +75,11 @@ async def list_groups(
     query = GroupQueryRequest(
         offset=offset,
         limit=limit,
+        page=page,
+        pageSize=pageSize,
+        search=search,
+        sortBy=sortBy,
+        sortOrder=sortOrder,
         type=type,
         groupSize=groupSize,
         block1=block1,
@@ -52,11 +90,24 @@ async def list_groups(
         maxCGPA=maxCGPA,
     )
 
-    groups = await group_service.list_groups_for_student(student, query)
+    result = await group_service.list_groups_for_student(student, query)
+    groups = result.get("groups", [])
     return {
-        "total": len(groups),
+        "total": result.get("totalCount", len(groups)),
+        "totalCount": result.get("totalCount", len(groups)),
+        "page": result.get("page", page),
+        "pageSize": result.get("pageSize", pageSize),
+        "totalPages": result.get("totalPages", 1),
+        "hasNextPage": result.get("hasNextPage", False),
+        "hasPrevPage": result.get("hasPrevPage", False),
         "message": "Groups fetched successfully.",
         "groups": serialize_for_api(groups),
+        "filterOptions": {
+            "hostelType": student.get("hostelType"),
+            "roomTypes": [GroupType.AC.value, GroupType.NON_AC.value],
+            "roomSizes": _room_sizes_for_hostel(student.get("hostelType")),
+            "blocks": _blocks_for_hostel(student.get("hostelType")),
+        },
     }
 
 

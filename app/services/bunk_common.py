@@ -48,6 +48,8 @@ LH_BLOCKS = {
     "LH1",
     "GH",
 }
+MH_ROOM_SIZES = [2, 3, 4, 6]
+LH_ROOM_SIZES = [2, 3, 4, 5, 6]
 REG_NO_PATTERN = re.compile(r"^(\d{2})[A-Z]{3}\d{4}$", flags=re.IGNORECASE)
 
 
@@ -58,7 +60,7 @@ def size_to_capacity(size: GroupSize | str) -> int:
         raise ValueError(f"Invalid group size value: {size!r}")
 
     value = int(match.group(1))
-    if value not in {1, 2, 3, 4, 6, 8}:
+    if value not in {1, 2, 3, 4, 5, 6, 8}:
         raise ValueError(f"Unsupported group size value: {size!r}")
 
     return value
