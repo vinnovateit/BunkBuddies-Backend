@@ -168,6 +168,38 @@ async def get_student(current_user: CurrentAuthUser = Depends(get_current_auth_u
     return {"message": "User found", "user": serialize_for_api(user_with_admin_details)}
 
 
+@router.get("/getStudentLite")
+async def get_student_lite(current_user: CurrentAuthUser = Depends(get_current_auth_user)):
+    db = get_database()
+    student_service = StudentService(db)
+    group_service = GroupService(db)
+    user_service = UserService(db)
+
+    student = await _ensure_student_profile(student_service, user_service, current_user)
+    if not student:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    group_summary = None
+    if student.get("groupId"):
+        group = await group_service.get_by_id(student["groupId"])
+        if group:
+            group_summary = {
+                "id": group.get("id"),
+                "adminUID": group.get("adminUID"),
+            }
+        else:
+            group_summary = {"id": student.get("groupId")}
+
+    user_lite = {
+        "firebaseUID": student.get("firebaseUID"),
+        "regNo": student.get("regNo"),
+        "hostelType": student.get("hostelType"),
+        "group": group_summary,
+        "hasGroup": bool(group_summary),
+    }
+    return {"message": "User found", "user": serialize_for_api(user_lite)}
+
+
 @router.put("/updateStudent")
 async def update_student(
     payload: UpdateStudentRequest,

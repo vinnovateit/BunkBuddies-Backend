@@ -60,6 +60,26 @@ def _parse_multi_query_values(values: list[str] | None) -> list[str]:
     return parsed
 
 
+def _group_preview_payload(group: dict) -> dict:
+    # Share only fields required by explore/list screens; keep member PII private.
+    return {
+        "id": group.get("id"),
+        "groupName": group.get("groupName"),
+        "type": group.get("type"),
+        "groupSize": group.get("groupSize"),
+        "block1": group.get("block1"),
+        "block2": group.get("block2"),
+        "block3": group.get("block3"),
+        "preferences": group.get("preferences"),
+        "hostelType": group.get("hostelType"),
+        "createdAt": group.get("createdAt"),
+        "adminCGPA": group.get("adminCGPA"),
+        "adminName": group.get("adminName"),
+        "adminRegNo": group.get("adminRegNo"),
+        "availableBeds": group.get("availableBeds"),
+    }
+
+
 @router.get("/listGroups")
 async def list_groups(
     offset: int = Query(0),
@@ -117,6 +137,7 @@ async def list_groups(
 
     result = await group_service.list_groups_for_student(student, query)
     groups = result.get("groups", [])
+    safe_groups = [_group_preview_payload(group) for group in groups]
     return {
         "total": result.get("totalCount", len(groups)),
         "totalCount": result.get("totalCount", len(groups)),
@@ -126,7 +147,7 @@ async def list_groups(
         "hasNextPage": result.get("hasNextPage", False),
         "hasPrevPage": result.get("hasPrevPage", False),
         "message": "Groups fetched successfully.",
-        "groups": serialize_for_api(groups),
+        "groups": serialize_for_api(safe_groups),
         "filterOptions": {
             "hostelType": student.get("hostelType"),
             "roomTypes": [GroupType.AC.value, GroupType.NON_AC.value],
