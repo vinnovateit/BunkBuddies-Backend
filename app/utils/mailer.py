@@ -5,7 +5,20 @@ from typing import Dict, Any, Union, List
 from pydantic import EmailStr
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 
-load_dotenv()
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# This gets the folder where mailer.py actually lives (app/utils)
+current_dir = Path(__file__).resolve().parent
+# This points specifically to the .env inside that same folder
+load_dotenv(dotenv_path=current_dir / ".env")
+
+# TEMPORARY DEBUG: Run your test and check the terminal for these
+print(f"--- DEBUG INFO ---")
+print(f"Looking for .env in: {current_dir}")
+print(f"Loaded Username: {os.getenv('MAIL_USERNAME')}")
+print(f"------------------")
 
 conf = ConnectionConfig(
     MAIL_USERNAME = os.getenv("MAIL_USERNAME"),
