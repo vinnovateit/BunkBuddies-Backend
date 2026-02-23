@@ -28,14 +28,22 @@ async def main():
         await mailer(
             template_path="app/templates/emails/request_received.html",
             email_to="shreya.verma2025@vitstudent.ac.in",
-            subject="BunkBuddies - Request Received",
+            subject="BunkBuddies - Room Request Digest",
             context={
-                "admin_name": "ADMIN", 
-                "group_name": "XYZ",
-                "sender_name": "ABC",
-                "sender_reg": "25BCE2425",
-                "sender_mob": "XXXXX XXXXX",
-                "sender_mail": "test@vitstudent.ac.in"
+                "admin_name": "ADMIN",
+                "request_count": 2,
+                "requests": [
+                    {
+                        "sender_name": "ABC",
+                        "sender_reg": "25BCE2425",
+                        "group_name": "XYZ"
+                    },
+                    {
+                        "sender_name": "PQR",
+                        "sender_reg": "25CSE1111",
+                        "group_name": "XYZ"
+                    },
+                ],
             }
         )
         print("--- All tests completed successfully! ---")

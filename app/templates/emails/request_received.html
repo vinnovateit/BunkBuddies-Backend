@@ -10,35 +10,68 @@
             .black-border { border-color: #000000 !important; }
             .button-text { color: #000000 !important; text-decoration: none !important; }
         }
+        @media screen and (max-width: 620px) {
+            .email-shell { padding: 28px 16px !important; }
+            .logo-left { width: 108px !important; height: auto !important; }
+            .logo-right { width: 120px !important; height: auto !important; }
+            .view-btn { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+        }
     </style>
 </head>
 <body style="font-family: 'Syne', sans-serif; background-color: #f4f4f4; padding: 40px 10px; margin: 0;">
     
-    <div class="black-border" style="max-width: 600px; margin: 0 auto; background-color: #CBA0FF; padding: 40px 30px; border-radius: 12px; border: 2px solid #000000; color: #000000;">
+    <div class="black-border email-shell" style="max-width: 600px; margin: 0 auto; background-color: #CBA0FF; padding: 40px 30px; border-radius: 12px; border: 2px solid #000000; color: #000000;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+            <tr>
+                <td align="left" valign="middle">
+                    {% if bb_logo_src %}
+                    <img src="{{ bb_logo_src }}" alt="BunkBuddies" width="130" class="logo-left" style="display: block; border: 0; outline: none; text-decoration: none;">
+                    {% endif %}
+                </td>
+                <td align="right" valign="middle">
+                    {% if vinn_logo_src %}
+                    <img src="{{ vinn_logo_src }}" alt="VinnovateIT" width="150" class="logo-right" style="display: block; border: 0; outline: none; text-decoration: none;">
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+
         
         <div class="black-border" style="background-color: #47D19D; border: 2px solid #000000; padding: 15px; margin-bottom: 30px; border-radius: 8px; box-shadow: 6px 6px 0px 0px #000000; text-align: center;">
-            <h2 class="black-text" style="margin: 0; color: #000000 !important; text-transform: uppercase; letter-spacing: 1px; font-size: 20px;">New Roommate Request! 🏠</h2>
+            <h2 class="black-text" style="margin: 0; color: #000000 !important; text-transform: uppercase; letter-spacing: 1px; font-size: 20px;">New Roommate Requests! 🏠</h2>
         </div>
 
         <p class="black-text" style="font-size: 18px; color: #000000 !important;">Hi <b class="black-text" style="color: #000000 !important;">{{ admin_name }}</b>,</p>
         
-        <p class="black-text" style="color: #000000 !important;">A student has just requested to join your group, <b class="black-text" style="color: #000000 !important;">{{ group_name }}</b>.</p>
-        
-        <div class="black-border" style="background-color: rgba(255, 255, 255, 0.6); padding: 25px; border: 2px solid #000000; border-radius: 8px; margin: 25px 0;">
-            <h3 class="black-text" style="margin-top: 0; margin-bottom: 15px; font-size: 18px; text-decoration: underline; color: #000000 !important;">Student Details:</h3>
+        {% if requests and requests|length > 0 %}
+        <p class="black-text" style="color: #000000 !important;">You have <b class="black-text" style="color: #000000 !important;">{{ request_count }}</b> new room requests. Latest {{ requests|length }} shown below.</p>
+
+        {% for req in requests %}
+        <div class="black-border" style="background-color: rgba(255, 255, 255, 0.6); padding: 22px; border: 2px solid #000000; border-radius: 8px; margin: 18px 0;">
+            <h3 class="black-text" style="margin-top: 0; margin-bottom: 12px; font-size: 17px; text-decoration: underline; color: #000000 !important;">Request {{ loop.index }}</h3>
             <ul style="margin: 0; padding-left: 20px; list-style-type: square; color: #000000 !important;">
-                <li class="black-text" style="margin-bottom: 8px; color: #000000 !important;"><b style="color: #000000 !important;">Name:</b> {{ sender_name }}</li>
-                <li class="black-text" style="margin-bottom: 8px; color: #000000 !important;"><b style="color: #000000 !important;">Registration Number:</b> {{ sender_reg }}</li>
-                <li class="black-text" style="margin-bottom: 8px; color: #000000 !important;"><b style="color: #000000 !important;">Mobile Number:</b> {{ sender_mob }}</li>
-                <li class="black-text" style="margin-bottom: 0; color: #000000 !important;"><b style="color: #000000 !important;">Student Email:</b> {{ sender_mail }}</li>
+                <li class="black-text" style="margin-bottom: 6px; color: #000000 !important;"><b style="color: #000000 !important;">Name:</b> {{ req.sender_name }}</li>
+                <li class="black-text" style="margin-bottom: 0; color: #000000 !important;"><b style="color: #000000 !important;">Registration Number:</b> {{ req.sender_reg }}</li>
             </ul>
         </div>
-        
-        <p class="black-text" style="font-weight: bold; color: #000000 !important;">Please log in to BunkBuddies to review and accept or reject this request.</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-            <a href="https://bunkbuddies.vinnovateit.com/my-groups" class="button-text" style="background-color: #47D19D; color: #000000 !important; padding: 16px 32px; text-decoration: none; font-weight: bold; border: 2px solid #000000; border-radius: 8px; box-shadow: 4px 4px 0px 0px #000000; display: inline-block; text-transform: uppercase; font-size: 14px;">
-                View My Groups →
+        {% endfor %}
+        {% else %}
+        <p class="black-text" style="color: #000000 !important;">A student has just sent you a room request.</p>
+
+        <div class="black-border" style="background-color: rgba(255, 255, 255, 0.6); padding: 22px; border: 2px solid #000000; border-radius: 8px; margin: 18px 0;">
+            <h3 class="black-text" style="margin-top: 0; margin-bottom: 12px; font-size: 17px; text-decoration: underline; color: #000000 !important;">Student Details:</h3>
+            <ul style="margin: 0; padding-left: 20px; list-style-type: square; color: #000000 !important;">
+                <li class="black-text" style="margin-bottom: 6px; color: #000000 !important;"><b style="color: #000000 !important;">Name:</b> {{ sender_name }}</li>
+                <li class="black-text" style="margin-bottom: 0; color: #000000 !important;"><b style="color: #000000 !important;">Registration Number:</b> {{ sender_reg }}</li>
+            </ul>
+        </div>
+        {% endif %}
+
+        <p class="black-text" style="font-weight: bold; color: #000000 !important; margin: 4px 0 10px 0;">Please open BunkBuddies to review these requests.</p>
+
+        <div style="text-align: center; margin: 6px 0 24px 0;">
+            <a href="https://bunkbuddies.vinnovateit.com/my-groups" class="button-text view-btn" style="background-color: #47D19D; color: #000000 !important; padding: 14px 28px; text-decoration: none; font-weight: bold; border: 2px solid #000000; border-radius: 8px; box-shadow: 4px 4px 0px 0px #000000; display: inline-block; text-transform: uppercase; font-size: 13px; min-width: 200px; text-align: center;">
+                View Requests
             </a>
         </div>
 
@@ -49,3 +82,5 @@
 
 </body>
 </html>
+
+
