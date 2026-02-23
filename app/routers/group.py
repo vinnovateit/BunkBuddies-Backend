@@ -5,24 +5,77 @@ from app.database import get_database
 from app.schemas import (
     CreateGroupRequest,
     CurrentAuthUser,
+    GroupType,
     GroupQueryRequest,
+    HostelType,
     UpdateGroupRequest,
 )
 from app.services import GroupRequestService, GroupService, StudentService
-from app.services.bunk_common import serialize_for_api, verify_blocks
+from app.services.bunk_common import (
+    LH_BLOCKS,
+    LH_ROOM_SIZES,
+    MH_BLOCKS,
+    MH_ROOM_SIZES,
+    is_reg_no_junior_to,
+    serialize_for_api,
+    verify_blocks,
+)
 
 router = APIRouter(prefix="/group", tags=["group"])
+
+
+def _blocks_for_hostel(hostel_type: str | None) -> list[str]:
+    normalized = str(hostel_type or "").upper()
+    if normalized == HostelType.MH.value:
+        return sorted(MH_BLOCKS)
+    if normalized == HostelType.LH.value:
+        return sorted(LH_BLOCKS)
+    return sorted(MH_BLOCKS | LH_BLOCKS)
+
+
+def _room_sizes_for_hostel(hostel_type: str | None) -> list[str]:
+    normalized = str(hostel_type or "").upper()
+    if normalized == HostelType.MH.value:
+        return [str(value) for value in MH_ROOM_SIZES]
+    if normalized == HostelType.LH.value:
+        return [str(value) for value in LH_ROOM_SIZES]
+    return [str(value) for value in sorted(set(MH_ROOM_SIZES) | set(LH_ROOM_SIZES))]
+
+
+def _parse_multi_query_values(values: list[str] | None) -> list[str]:
+    if not values:
+        return []
+    parsed: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        for part in str(value or "").split(","):
+            text = part.strip()
+            if not text:
+                continue
+            key = text.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            parsed.append(text)
+    return parsed
 
 
 @router.get("/listGroups")
 async def list_groups(
     offset: int = Query(0),
     limit: int = Query(20),
+    page: int = Query(1),
+    pageSize: int = Query(20),
+    search: str | None = Query(None),
+    sortBy: str | None = Query(None),
+    sortOrder: str | None = Query(None),
     type: str | None = Query(None),
     groupSize: str | None = Query(None),
+    groupSizes: list[str] | None = Query(None),
     block1: str | None = Query(None),
     block2: str | None = Query(None),
     block3: str | None = Query(None),
+    blocks: list[str] | None = Query(None),
     vacancy: int | None = Query(None),
     minCGPA: float | None = Query(None),
     maxCGPA: float | None = Query(None),
@@ -39,24 +92,47 @@ async def list_groups(
     if not student.get("hostelType"):
         raise HTTPException(status_code=400, detail="Student has not selected a hostel type.")
 
-    query = GroupQueryRequest(
-        offset=offset,
-        limit=limit,
-        type=type,
-        groupSize=groupSize,
-        block1=block1,
-        block2=block2,
-        block3=block3,
-        vacancy=vacancy,
-        minCGPA=minCGPA,
-        maxCGPA=maxCGPA,
-    )
+    query_payload = {
+        "offset": offset,
+        "limit": limit,
+        "page": page,
+        "pageSize": pageSize,
+        "search": search,
+        "sortBy": sortBy,
+        "type": type,
+        "groupSize": groupSize,
+        "groupSizes": _parse_multi_query_values(groupSizes),
+        "block1": block1,
+        "block2": block2,
+        "block3": block3,
+        "blocks": _parse_multi_query_values(blocks),
+        "vacancy": vacancy,
+        "minCGPA": minCGPA,
+        "maxCGPA": maxCGPA,
+    }
+    if sortOrder is not None:
+        query_payload["sortOrder"] = sortOrder
 
-    groups = await group_service.list_groups_for_student(student, query)
+    query = GroupQueryRequest(**query_payload)
+
+    result = await group_service.list_groups_for_student(student, query)
+    groups = result.get("groups", [])
     return {
-        "total": len(groups),
+        "total": result.get("totalCount", len(groups)),
+        "totalCount": result.get("totalCount", len(groups)),
+        "page": result.get("page", page),
+        "pageSize": result.get("pageSize", pageSize),
+        "totalPages": result.get("totalPages", 1),
+        "hasNextPage": result.get("hasNextPage", False),
+        "hasPrevPage": result.get("hasPrevPage", False),
         "message": "Groups fetched successfully.",
         "groups": serialize_for_api(groups),
+        "filterOptions": {
+            "hostelType": student.get("hostelType"),
+            "roomTypes": [GroupType.AC.value, GroupType.NON_AC.value],
+            "roomSizes": _room_sizes_for_hostel(student.get("hostelType")),
+            "blocks": _blocks_for_hostel(student.get("hostelType")),
+        },
     }
 
 
@@ -196,6 +272,10 @@ async def join_group_by_code(
         raise HTTPException(status_code=400, detail="Group does not exist")
     if not group_service.is_hostel_compatible(student, group):
         raise HTTPException(status_code=403, detail="You can only join rooms from your own hostel type.")
+
+    admin = await student_service.get_by_uid(group.get("adminUID"))
+    if admin and is_reg_no_junior_to(student.get("regNo"), admin.get("regNo")) is True:
+        raise HTTPException(status_code=403, detail="Juniors cannot join rooms created by seniors.")
 
     group_student_uids = group_service.get_student_uids(group)
     if current_user.uid == group["adminUID"] or current_user.uid in group_student_uids:
