@@ -14,9 +14,12 @@ async def lifespan(app: FastAPI):
     """Manage application lifespan"""
     # Startup
     await connect_to_mongo()
-    yield
-    # Shutdown
-    await close_mongo_connection()
+
+    try:
+        yield
+    finally:
+        # Shutdown
+        await close_mongo_connection()
 
 
 # Create FastAPI app

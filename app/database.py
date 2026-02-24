@@ -37,6 +37,7 @@ async def connect_to_mongo():
         [("groupId", 1), ("studentRegNo", 1)],
         unique=True,
     )
+    await database["group_requests"].create_index([("status", 1), ("adminDigestSentAt", 1), ("createdAt", -1)])
     print(f"Connected to MongoDB: {settings.database_name}")
 
 

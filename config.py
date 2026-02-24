@@ -28,6 +28,21 @@ class Settings(BaseSettings):
     # Server
     debug: bool = True
     host: str = "0.0.0.0"
-    port: int = 3000
+    port: int = Field(default=8000, validation_alias="PORT")
+
+    # Public URLs / scheduled digests
+    backend_public_url: str = Field(default="http://127.0.0.1:8000", validation_alias="BACKEND_PUBLIC_URL")
+    frontend_public_url: str = Field(
+        default="https://bunkbuddies.vinnovateit.com",
+        validation_alias="FRONTEND_PUBLIC_URL",
+    )
+    nodemailer_api_url: str = Field(
+        default="https://nodemailer-lac.vercel.app/api/send-email",
+        validation_alias="NODEMAILER_API_URL",
+    )
+    nodemailer_timeout_seconds: int = Field(default=20, validation_alias="NODEMAILER_TIMEOUT_SECONDS")
+    group_request_digest_enabled: bool = Field(default=True, validation_alias="GROUP_REQUEST_DIGEST_ENABLED")
+    group_request_digest_interval_hours: int = Field(default=5, validation_alias="GROUP_REQUEST_DIGEST_INTERVAL_HOURS")
+    group_request_digest_batch_size: int = Field(default=3, validation_alias="GROUP_REQUEST_DIGEST_BATCH_SIZE")
     
 settings = Settings()
