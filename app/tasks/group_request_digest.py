@@ -13,6 +13,8 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
+MAX_DIGEST_EMAILS_PER_RUN = 100
+
 
 async def send_group_request_digest_once() -> int:
     db = get_database()
@@ -37,25 +39,28 @@ async def send_group_request_digest_once() -> int:
     groups = await db["groups"].find({"_id": {"$in": group_ids}}).to_list(length=len(group_ids))
     group_map = {group["_id"]: group for group in groups}
 
-    by_admin: dict[str, list[tuple[dict, dict]]] = defaultdict(list)
+    by_group: dict[ObjectId, list[dict]] = defaultdict(list)
     requester_reg_nos: set[str] = set()
     admin_uids: set[str] = set()
 
     for req in unsent_requests:
-        group = group_map.get(req.get("groupId"))
+        group_id = req.get("groupId")
+        if not isinstance(group_id, ObjectId):
+            continue
+        group = group_map.get(group_id)
         if not group:
             continue
         admin_uid = group.get("adminUID")
         if not isinstance(admin_uid, str) or not admin_uid.strip():
             continue
-        by_admin[admin_uid].append((req, group))
+        by_group[group_id].append(req)
         admin_uids.add(admin_uid)
 
         reg_no = req.get("studentRegNo")
         if isinstance(reg_no, str) and reg_no.strip():
             requester_reg_nos.add(reg_no)
 
-    if not by_admin:
+    if not by_group:
         return 0
 
     admin_students = await db["students"].find({"firebaseUID": {"$in": list(admin_uids)}}).to_list(length=len(admin_uids))
@@ -76,8 +81,20 @@ async def send_group_request_digest_once() -> int:
 
     batch_size = max(settings.group_request_digest_batch_size, 1)
     sent_requests = 0
+    sent_emails = 0
 
-    for admin_uid, rows in by_admin.items():
+    for group_id, rows in by_group.items():
+        if sent_emails >= MAX_DIGEST_EMAILS_PER_RUN:
+            break
+
+        group = group_map.get(group_id)
+        if not group:
+            continue
+
+        admin_uid = group.get("adminUID")
+        if not isinstance(admin_uid, str) or not admin_uid.strip():
+            continue
+
         admin = admin_map.get(admin_uid)
         if not admin:
             continue
@@ -87,13 +104,17 @@ async def send_group_request_digest_once() -> int:
 
         selected_rows = rows[:batch_size]
         digest_rows: list[dict] = []
-        sent_request_ids: list[ObjectId] = []
+        all_group_request_ids: list[ObjectId] = []
 
-        for req, group in selected_rows:
+        for req in rows:
+            req_oid = req.get("_id")
+            if isinstance(req_oid, ObjectId):
+                all_group_request_ids.append(req_oid)
+
+        for req in selected_rows:
             req_oid = req.get("_id")
             if not isinstance(req_oid, ObjectId):
                 continue
-            sent_request_ids.append(req_oid)
 
             reg_no = req.get("studentRegNo", "")
             requester = requester_map.get(reg_no, {})
@@ -105,7 +126,7 @@ async def send_group_request_digest_once() -> int:
                 }
             )
 
-        if not digest_rows or not sent_request_ids:
+        if not digest_rows or not all_group_request_ids:
             continue
 
         total_request_count = len(rows)
@@ -126,8 +147,9 @@ async def send_group_request_digest_once() -> int:
             logger.exception("Failed to send group request digest for admin uid=%s", admin_uid)
             continue
 
-        await request_service.mark_digest_sent(sent_request_ids)
-        sent_requests += len(sent_request_ids)
+        await request_service.mark_digest_sent(all_group_request_ids)
+        sent_requests += len(all_group_request_ids)
+        sent_emails += 1
 
     return sent_requests
 

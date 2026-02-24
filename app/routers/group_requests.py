@@ -9,7 +9,7 @@ from app.schemas import CurrentAuthUser, GroupRequestStatus
 from app.services import GroupRequestService, GroupService, StudentService
 from app.services.bunk_common import is_reg_no_junior_to, serialize_for_api
 from app.utils.group_request_email_actions import decode_group_request_email_action_token
-from app.utils.mailer import mailer
+from app.utils.nodemailer_client import send_via_nodemailer
 
 router = APIRouter(prefix="/groupRequest", tags=["groupRequest"])
 
@@ -111,9 +111,9 @@ async def _process_group_request_action(
                 },
             }
             if background_tasks is not None:
-                background_tasks.add_task(mailer, **mail_args)
+                background_tasks.add_task(send_via_nodemailer, **mail_args)
             else:
-                await mailer(**mail_args)
+                await send_via_nodemailer(**mail_args)
 
         return {
             "message": "Request updated successfully",

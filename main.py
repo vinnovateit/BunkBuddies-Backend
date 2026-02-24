@@ -1,14 +1,11 @@
 """FastAPI Application Entry Point"""
-import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from contextlib import suppress
 
 from config import settings
 from app.database import connect_to_mongo, close_mongo_connection
 from app.routers import auth, group, group_requests, student, users
-from app.tasks.group_request_digest import run_group_request_digest_scheduler
 
 
 # Lifespan context manager for startup/shutdown
@@ -17,18 +14,11 @@ async def lifespan(app: FastAPI):
     """Manage application lifespan"""
     # Startup
     await connect_to_mongo()
-    digest_task: asyncio.Task | None = None
-    if settings.group_request_digest_enabled:
-        digest_task = asyncio.create_task(run_group_request_digest_scheduler())
 
     try:
         yield
     finally:
         # Shutdown
-        if digest_task:
-            digest_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await digest_task
         await close_mongo_connection()
 
 
