@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas import GroupRequestStatus, GroupSize, GroupType, HostelType
-
 
 class Student(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -22,6 +21,14 @@ class Student(BaseModel):
     CGPA: Optional[float] = None
     description: Optional[str] = None
     groupId: Optional[str] = None
+    rank: Optional[int] = None
+    sleepTime: Optional[float] = None
+    wakeTime: Optional[float] = None
+    cleanliness: Optional[int] = Field(default=None, ge=0, le=5)
+    socialScene: Optional[int] = Field(default=None, ge=0, le=5)
+    languages: Optional[List[str]] = Field(default_factory=list)
+    interests: Optional[str] = None
+    quizCompleted: Optional[bool] = False
 
 
 class Group(BaseModel):

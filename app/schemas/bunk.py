@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 import re
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -56,6 +56,14 @@ class UpdateStudentRequest(BaseModel):
     CGPA: Optional[float] = Field(default=None, ge=0, le=10)
     description: Optional[str] = None
     hostelType: Optional[HostelType] = None
+    rank: Optional[int] = None
+    sleepTime: Optional[float] = None
+    wakeTime: Optional[float] = None
+    cleanliness: Optional[int] = Field(default=None, ge=0, le=5)
+    socialScene: Optional[int] = Field(default=None, ge=0, le=5)
+    languages: Optional[List[str]] = None
+    interests: Optional[str] = None
+    quizCompleted: Optional[bool] = None
 
     @field_validator("phone")
     @classmethod
