@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from config import settings
 from app.database import connect_to_mongo, close_mongo_connection
-from app.routers import auth, group, group_requests, student, users
+from app.routers import auth, group, group_requests, student, direct_chat, users, general_chat
 
 
 # Lifespan context manager for startup/shutdown
@@ -45,7 +45,8 @@ app.include_router(users.router)
 app.include_router(student.router)
 app.include_router(group.router)
 app.include_router(group_requests.router)
-
+app.include_router(general_chat.router)
+app.include_router(direct_chat.router)
 
 @app.get("/")
 async def root():
