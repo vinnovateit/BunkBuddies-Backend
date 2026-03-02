@@ -150,59 +150,6 @@ async def list_group_requests(current_user: CurrentAuthUser = Depends(get_curren
     return {"message": "Requests fetched successfully", "requests": serialize_for_api(requests)}
 
 
-@router.post("/joinRequest/{id}")
-async def request_join_group(
-    id: str,
-    current_user: CurrentAuthUser = Depends(get_current_auth_user),
-):
-    db = get_database()
-    group_service = GroupService(db)
-    student_service = StudentService(db)
-    request_service = GroupRequestService(db)
-
-    group = await group_service.get_by_id(id)
-    if not group:
-        raise HTTPException(status_code=400, detail="Group doesn't exist")
-
-    student = await student_service.get_by_uid(current_user.uid)
-    if not student:
-        raise HTTPException(status_code=400, detail="Student doesn't exist")
-    if not student.get("hostelType"):
-        raise HTTPException(status_code=400, detail="Student has not selected a hostel type.")
-
-    existing_group = await group_service.get_any_group_for_student_uid(current_user.uid)
-    if existing_group:
-        if not student.get("groupId"):
-            await student_service.set_group(current_user.uid, existing_group["id"])
-        if student.get("regNo"):
-            await request_service.delete_all_for_student(student["regNo"])
-        raise HTTPException(status_code=400, detail="You are already in a group")
-
-    if not group_service.is_hostel_compatible(student, group):
-        raise HTTPException(
-            status_code=403,
-            detail="You can only request to join rooms from your own hostel type.",
-        )
-
-    admin = await student_service.get_by_uid(group.get("adminUID"))
-    if admin and is_reg_no_junior_to(student.get("regNo"), admin.get("regNo")) is True:
-        raise HTTPException(status_code=403, detail="Juniors cannot join rooms created by seniors.")
-
-    existing = await request_service.get_existing(id, student["regNo"])
-    if existing:
-        raise HTTPException(status_code=400, detail="You have already sent a request")
-
-    if student.get("firebaseUID") in group_service.get_student_uids(group):
-        raise HTTPException(status_code=400, detail="You are already in this group")
-
-    try:
-        if await group_service.is_full(group):
-            raise HTTPException(status_code=400, detail="Group is full")
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    created_request = await request_service.create_request(id, student["regNo"])
-    return {"message": "Request sent successfully", "request": serialize_for_api(created_request)}
 
 
 @router.post("/updateRequest/{id}/{action}")
