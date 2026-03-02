@@ -49,3 +49,12 @@ class GroupRequest(BaseModel):
     status: GroupRequestStatus = GroupRequestStatus.PENDING
     groupId: str
     studentRegNo: str
+
+class DirectMessage(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: Optional[str] = Field(default=None, alias="_id")
+    senderRegNo: str
+    receiverRegNo: str
+    message: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
