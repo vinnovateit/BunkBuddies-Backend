@@ -59,6 +59,7 @@ class UpdateStudentRequest(BaseModel):
     CGPA: Optional[float] = Field(default=None, ge=0, le=10)
     description: Optional[str] = None
     hostelType: Optional[HostelType] = None
+    hostelGroup: Optional[int] = Field(default=None, ge=1, le=3)
     rank: Optional[int] = None
     sleepTime: Optional[float] = None
     wakeTime: Optional[float] = None

@@ -18,6 +18,7 @@ class Student(BaseModel):
     photoURL: Optional[str] = None
     firebaseUID: str
     hostelType: Optional[HostelType] = None
+    hostelGroup: Optional[int] = None
     CGPA: Optional[float] = None
     description: Optional[str] = None
     groupId: Optional[str] = None
