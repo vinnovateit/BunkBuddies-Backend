@@ -56,6 +56,7 @@ class GroupRequest(BaseModel):
     status: GroupRequestStatus = GroupRequestStatus.PENDING
     groupId: str
     studentRegNo: str
+    score: float 
 
 class DirectMessage(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
