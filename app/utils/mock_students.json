@@ -1,0 +1,224 @@
+[
+  {
+    "_id": {
+      "$oid": "65b2a1c9e585769891b33001"
+    },
+    "regNo": "22BCE1001",
+    "sleepTime": 23.0,
+    "wakeTime": 6.5,
+    "cleanliness": 5,
+    "socialScene": 1,
+    "languages": [
+      "English",
+      "Hindi"
+    ],
+    "interests": "I love quiet environments, reading sci-fi novels, and going to the gym early in the morning."
+  },
+  {
+    "_id": {
+      "$oid": "65b2a1c9e585769891b33002"
+    },
+    "regNo": "21BME2055",
+    "sleepTime": 27.5,
+    "wakeTime": 11.0,
+    "cleanliness": 1,
+    "socialScene": 5,
+    "languages": [
+      "English",
+      "Tamil",
+      "Telugu"
+    ],
+    "interests": "Huge extrovert! I love hosting people, late-night gaming sessions, and participating in hackathons."
+  },
+  {
+    "_id": {
+      "$oid": "65b2a1c9e585769891b33003"
+    },
+    "regNo": "23BCE3099",
+    "sleepTime": 24.5,
+    "wakeTime": 8.0,
+    "cleanliness": 3,
+    "socialScene": 3,
+    "languages": [
+      "English",
+      "Malayalam"
+    ],
+    "interests": "Pretty balanced. I like watching anime, listening to music, and exploring new cafes on weekends."
+  },
+  {
+    "_id": {
+      "$oid": "65b2a1c9e585769891b33004"
+    },
+    "regNo": "22BCE1012",
+    "sleepTime": 25.0,
+    "wakeTime": 7.5,
+    "cleanliness": 4,
+    "socialScene": 2,
+    "languages": [
+      "English",
+      "Kannada",
+      "Hindi"
+    ],
+    "interests": "Focused on academics. I prefer a clean room, open-source coding, and occasional movie nights."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33005" },
+    "regNo": "21BCE1101",
+    "sleepTime": 28.0,
+    "wakeTime": 12.0,
+    "cleanliness": 2,
+    "socialScene": 4,
+    "languages": ["English", "Hindi"],
+    "interests": "Hardcore gamer and streamer. I stay up late, usually on Discord with friends. Room might be a bit cluttered."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33006" },
+    "regNo": "22BME1022",
+    "sleepTime": 22.5,
+    "wakeTime": 5.5,
+    "cleanliness": 4,
+    "socialScene": 3,
+    "languages": ["English", "Tamil", "Malayalam"],
+    "interests": "Gym rat. I sleep early so I can hit the gym right when it opens. Pretty clean, like to hang out but need my rest."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33007" },
+    "regNo": "23BEE1005",
+    "sleepTime": 24.0,
+    "wakeTime": 7.0,
+    "cleanliness": 5,
+    "socialScene": 1,
+    "languages": ["English", "Telugu"],
+    "interests": "Strictly focused on academics and research. I need a pin-drop silent room and absolutely hate messes."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33008" },
+    "regNo": "21BCE1234",
+    "sleepTime": 26.0,
+    "wakeTime": 9.0,
+    "cleanliness": 3,
+    "socialScene": 5,
+    "languages": ["English", "Hindi", "Kannada"],
+    "interests": "Social butterfly! I know everyone in the block. Always down for late-night Maggi and long conversations."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33009" },
+    "regNo": "22BCE1999",
+    "sleepTime": 29.0,
+    "wakeTime": 13.0,
+    "cleanliness": 1,
+    "socialScene": 4,
+    "languages": ["English"],
+    "interests": "Music producer. I work best when the rest of the world is asleep. Not very organized, but very chill."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33010" },
+    "regNo": "23BME2001",
+    "sleepTime": 23.5,
+    "wakeTime": 6.0,
+    "cleanliness": 5,
+    "socialScene": 0,
+    "languages": ["Hindi", "Malayalam"],
+    "interests": "Extreme introvert. Please leave me alone. I just want to read my books in a spotless room."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33011" },
+    "regNo": "21BCE2222",
+    "sleepTime": 25.0,
+    "wakeTime": 8.5,
+    "cleanliness": 3,
+    "socialScene": 3,
+    "languages": ["English", "Tamil"],
+    "interests": "The most average guy ever. I sleep around 1 AM, wake up in time for class. Don't mind a little mess, but not too much."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33012" },
+    "regNo": "22BTT1055",
+    "sleepTime": 22.0,
+    "wakeTime": 5.0,
+    "cleanliness": 4,
+    "socialScene": 5,
+    "languages": ["English", "Telugu", "Hindi"],
+    "interests": "I love mornings! I go for runs and love dragging my roommates along. Very extroverted but respectful of sleep."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33013" },
+    "regNo": "23BCE3011",
+    "sleepTime": 28.5,
+    "wakeTime": 11.5,
+    "cleanliness": 0,
+    "socialScene": 2,
+    "languages": ["English", "Kannada"],
+    "interests": "I live in the matrix. I code until 4 AM. My desk is a graveyard of Red Bull cans. Need a roommate who doesn't care."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33014" },
+    "regNo": "21BME3090",
+    "sleepTime": 24.5,
+    "wakeTime": 7.5,
+    "cleanliness": 3,
+    "socialScene": 4,
+    "languages": ["Hindi", "Tamil"],
+    "interests": "Huge sports fan (cricket and football). Love watching matches with people. Keep my side of the room decently clean."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33015" },
+    "regNo": "22BEE1111",
+    "sleepTime": 27.0,
+    "wakeTime": 10.0,
+    "cleanliness": 5,
+    "socialScene": 2,
+    "languages": ["English", "Malayalam"],
+    "interests": "A rare combo: a late sleeper who is an absolute neat freak. I will clean the room at 2 AM to de-stress."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33016" },
+    "regNo": "23BTT2020",
+    "sleepTime": 23.0,
+    "wakeTime": 6.5,
+    "cleanliness": 0,
+    "socialScene": 1,
+    "languages": ["Telugu", "Hindi"],
+    "interests": "I wake up early but my room is chaos. Not very social, mostly just go to classes and come back to watch YouTube."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33017" },
+    "regNo": "21BCE1500",
+    "sleepTime": 26.5,
+    "wakeTime": 9.5,
+    "cleanliness": 4,
+    "socialScene": 3,
+    "languages": ["English", "Kannada", "Malayalam"],
+    "interests": "Content creator and video editor. I like a clean aesthetic background. Fun to hang out with but value my solo creative time."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33018" },
+    "regNo": "22BME2500",
+    "sleepTime": 23.5,
+    "wakeTime": 7.0,
+    "cleanliness": 4,
+    "socialScene": 1,
+    "languages": ["English", "Hindi"],
+    "interests": "I love watercolor painting, making tea, and quiet nights. Seeking a roommate who doesn't bring big crowds over."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33019" },
+    "regNo": "23BEE3500",
+    "sleepTime": 30.0,
+    "wakeTime": 14.0,
+    "cleanliness": 2,
+    "socialScene": 5,
+    "languages": ["English", "Tamil", "Hindi"],
+    "interests": "I basically live on European time. Super loud, love throwing room parties, very chaotic but always fun."
+  },
+  {
+    "_id": { "$oid": "65b2a1c9e585769891b33020" },
+    "regNo": "21BTT1200",
+    "sleepTime": 22.5,
+    "wakeTime": 5.0,
+    "cleanliness": 5,
+    "socialScene": 2,
+    "languages": ["English"],
+    "interests": "Zen minimalist. I meditate at 5:30 AM every day. My side of the room has exactly 4 items on it. Very peaceful."
+  }
+]

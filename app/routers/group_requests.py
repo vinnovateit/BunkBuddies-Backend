@@ -216,7 +216,6 @@ async def list_group_requests(current_user: CurrentAuthUser = Depends(get_curren
     requests = await group_service.get_pending_requests_for_admin(current_user.uid)
     return {"message": "Requests fetched successfully", "requests": serialize_for_api(requests)}
 
-
 @router.post("/joinRequest/{id}")
 async def request_join_group(
     id: str,
@@ -297,6 +296,8 @@ async def request_join_group(
         response_request["compatibility"] = match_data
 
     return {"message": "Request sent successfully", "request": response_request}
+
+
 
 @router.post("/updateRequest/{id}/{action}")
 async def update_request(
