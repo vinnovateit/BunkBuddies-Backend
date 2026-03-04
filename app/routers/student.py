@@ -101,6 +101,8 @@ async def _ensure_student_profile(
         cleaned_name = _strip_reg_no_from_name(current_name, current_reg)
         if cleaned_name and cleaned_name != current_name:
             updates["name"] = cleaned_name
+        if "quizCompleted" not in student or student.get("quizCompleted") is None:
+            updates["quizCompleted"] = False
 
         if updates:
             await student_service.update_by_uid(current_user.uid, updates)
@@ -124,12 +126,15 @@ async def _ensure_student_profile(
 
     duplicate_reg = await student_service.get_by_reg_no(reg_no)
     if duplicate_reg:
+        duplicate_updates = dict(student_payload)
+        if "quizCompleted" not in duplicate_reg or duplicate_reg.get("quizCompleted") is None:
+            duplicate_updates["quizCompleted"] = False
         await student_service.collection.update_one(
             {"_id": duplicate_reg["_id"]},
-            {"$set": student_payload},
+            {"$set": duplicate_updates},
         )
     else:
-        await student_service.create_student(student_payload)
+        await student_service.create_student({**student_payload, "quizCompleted": False})
 
     return await student_service.get_by_uid(current_user.uid)
 
