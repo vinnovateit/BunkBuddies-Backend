@@ -2,15 +2,14 @@
 Text Compatibility Engine (0.4 Weight)
 
 Breakdown:
-    0.3 → Room Description vs Applicant Interests
-    0.1 → Room Description vs Applicant Description
+    0.3 -> Room Description vs Applicant Interests
+    0.1 -> Room Description vs Applicant Description
 
 Final Output Range:
-    0.0 → 0.4
+    0.0 -> 0.4
 """
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from difflib import SequenceMatcher
 
 
 # =====================================================
@@ -19,7 +18,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 def _similarity(text1: str | None, text2: str | None) -> float:
     """
-    Computes cosine similarity between two texts using TF-IDF.
+    Computes lexical similarity between two texts.
 
     Returns:
         float between 0 and 1
@@ -28,29 +27,25 @@ def _similarity(text1: str | None, text2: str | None) -> float:
     if not text1 or not text2:
         return 0.0
 
-    text1 = text1.strip()
-    text2 = text2.strip()
+    text1 = text1.strip().lower()
+    text2 = text2.strip().lower()
 
     if not text1 or not text2:
         return 0.0
 
     try:
-        vectorizer = TfidfVectorizer(stop_words="english")
+        seq_ratio = SequenceMatcher(None, text1, text2).ratio()
 
-        tfidf_matrix = vectorizer.fit_transform([
-            text1,
-            text2
-        ])
+        tokens1 = set(text1.split())
+        tokens2 = set(text2.split())
+        if not tokens1 or not tokens2:
+            return max(0.0, min(1.0, float(seq_ratio)))
 
-        score = cosine_similarity(
-            tfidf_matrix[0:1],
-            tfidf_matrix[1:2]
-        )[0][0]
-
-        return float(score)
+        jaccard = len(tokens1 & tokens2) / len(tokens1 | tokens2)
+        return max(0.0, min(1.0, (seq_ratio + jaccard) / 2.0))
 
     except Exception:
-        # Fail-safe → never crash ranking pipeline
+        # Fail-safe -> never crash ranking pipeline
         return 0.0
 
 
@@ -66,13 +61,13 @@ def compute_text_match_score(
     Computes full TEXT compatibility score.
 
     Uses:
-        group.preferences        → room description
-        student.interests        → personality interests
-        student.description      → free-form bio
+        group.preferences        -> room description
+        student.interests        -> personality interests
+        student.description      -> free-form bio
 
     Weighting:
-        0.3 → interests match
-        0.1 → description match
+        0.3 -> interests match
+        0.1 -> description match
 
     Returns:
         float in range [0.0 , 0.4]
@@ -81,7 +76,7 @@ def compute_text_match_score(
     # ---------- ROOM DESCRIPTION ----------
     room_description = (group.get("preferences") or "").strip()
 
-    # If admin gave no room description → no NLP signal
+    # If admin gave no room description -> no NLP signal
     if not room_description:
         return 0.0
 

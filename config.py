@@ -44,5 +44,14 @@ class Settings(BaseSettings):
     group_request_digest_enabled: bool = Field(default=True, validation_alias="GROUP_REQUEST_DIGEST_ENABLED")
     group_request_digest_interval_hours: int = Field(default=5, validation_alias="GROUP_REQUEST_DIGEST_INTERVAL_HOURS")
     group_request_digest_batch_size: int = Field(default=3, validation_alias="GROUP_REQUEST_DIGEST_BATCH_SIZE")
+
+    # Hugging Face Inference API
+    hf_token: str | None = Field(default=None, validation_alias="HF_TOKEN")
+    hf_similarity_model: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        validation_alias="HF_SIMILARITY_MODEL",
+    )
+    hf_timeout_seconds: int = Field(default=12, validation_alias="HF_TIMEOUT_SECONDS")
+    hf_use_remote_inference: bool = Field(default=True, validation_alias="HF_USE_REMOTE_INFERENCE")
     
 settings = Settings()
