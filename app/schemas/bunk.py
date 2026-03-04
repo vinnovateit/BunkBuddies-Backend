@@ -1,4 +1,7 @@
 from __future__ import annotations
+from typing import Optional, List
+import re
+from pydantic import BaseModel, Field, field_validator
 
 from enum import Enum
 import re
@@ -56,6 +59,7 @@ class UpdateStudentRequest(BaseModel):
     CGPA: Optional[float] = Field(default=None, ge=0, le=10)
     description: Optional[str] = None
     hostelType: Optional[HostelType] = None
+    hostelGroup: Optional[int] = Field(default=None, ge=1, le=3)
     rank: Optional[int] = None
     sleepTime: Optional[float] = None
     wakeTime: Optional[float] = None
