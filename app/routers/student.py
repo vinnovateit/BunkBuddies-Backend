@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth.dependencies import get_current_auth_user
 from app.database import get_database
-from app.schemas import CurrentAuthUser, UpdateStudentRequest
+from app.schemas import CurrentAuthUser, HostelType, UpdateStudentRequest
 from app.services import GroupService, StudentService, UserService
 from app.services.bunk_common import serialize_for_api
 
@@ -219,6 +219,15 @@ async def update_student(
         raise HTTPException(status_code=404, detail="User not found")
 
     update_data = payload.model_dump(exclude_none=True)
+    resolved_hostel_type = update_data.get("hostelType") or student.get("hostelType")
+    hostel_group = update_data.get("hostelGroup")
+
+    if hostel_group is not None and resolved_hostel_type == HostelType.MH.value and hostel_group > 3:
+        raise HTTPException(
+            status_code=422,
+            detail="MH students can only choose Hostel Group 1, 2, or 3",
+        )
+
     updated_student = await student_service.update_by_uid(current_user.uid, update_data)
 
     return {"message": "User updated", "user": serialize_for_api(updated_student)}
