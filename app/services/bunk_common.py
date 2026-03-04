@@ -25,11 +25,7 @@ MH_BLOCKS = {
     "K",
     "L",
     "M",
-    "N",
-    "P",
-    "Q",
     "R",
-    "S",
     "T",
 }
 LH_BLOCKS = {
@@ -38,15 +34,10 @@ LH_BLOCKS = {
     "C",
     "D",
     "E",
-    "E Annex",
     "F",
-    "G",
-    "G Annex",
     "H",
     "J",
-    "RGT",
-    "LH1",
-    "GH",
+    "S",
 }
 MH_ROOM_SIZES = [2, 3, 4, 6]
 LH_ROOM_SIZES = [2, 3, 4, 5, 6]

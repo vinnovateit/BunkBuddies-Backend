@@ -194,20 +194,26 @@ async def google_callback(
         student_payload["regNo"] = resolved_reg_no
 
         if existing_student:
+            existing_updates = dict(student_payload)
+            if "quizCompleted" not in existing_student or existing_student.get("quizCompleted") is None:
+                existing_updates["quizCompleted"] = False
             await student_collection.update_one(
                 {"firebaseUID": user_info.get("id")},
-                {"$set": student_payload},
+                {"$set": existing_updates},
             )
         else:
             # Ensure there is always a student profile for logged-in users.
             duplicate_reg = await student_collection.find_one({"regNo": resolved_reg_no})
             if duplicate_reg:
+                duplicate_updates = dict(student_payload)
+                if "quizCompleted" not in duplicate_reg or duplicate_reg.get("quizCompleted") is None:
+                    duplicate_updates["quizCompleted"] = False
                 await student_collection.update_one(
                     {"_id": duplicate_reg["_id"]},
-                    {"$set": student_payload},
+                    {"$set": duplicate_updates},
                 )
             else:
-                await student_collection.insert_one(student_payload)
+                await student_collection.insert_one({**student_payload, "quizCompleted": False})
 
         # Create JWT token
         access_token = create_access_token(
