@@ -11,7 +11,72 @@ from app.services.bunk_common import is_reg_no_junior_to, serialize_for_api
 from app.utils.group_request_email_actions import decode_group_request_email_action_token
 from app.utils.nodemailer_client import send_via_nodemailer
 
+from app.utils.score_combiner import get_total_compatibility_initial
+from app.utils.score_combiner import update_total_compatibility
+
+from bson import ObjectId
+
+
 router = APIRouter(prefix="/groupRequest", tags=["groupRequest"])
+
+async def _recalculate_group_pending_requests(db, group_id: str):
+    group_service = GroupService(db)
+    student_service = StudentService(db)
+    
+    group = await group_service.get_by_id(group_id)
+    if not group: return
+    
+    query_id = ObjectId(group_id) if ObjectId.is_valid(group_id) else group_id
+    
+    cursor = db["group_requests"].find({
+        "groupId": query_id, 
+        "status": {"$in": ["PENDING", 0, "Pending"]}
+    })
+    
+    pending_requests = await cursor.to_list(length=None)
+    if not pending_requests: return
+    
+    admin = await student_service.get_by_uid(group.get("adminUID"))
+    if not admin: return
+    
+    member_uids = group.get("studentUids", [])
+    if not member_uids:
+        member_uids = [admin.get("firebaseUID")]
+        
+    group_members = await student_service.list_by_uids(member_uids)
+    num_members = len(group_members)
+    
+    avg_clean = sum([float(m.get("cleanliness", 0)) for m in group_members]) / num_members
+    avg_social = sum([float(m.get("socialScene", 0)) for m in group_members]) / num_members
+    avg_sleep = sum([float(m.get("sleepTime", 0)) for m in group_members]) / num_members
+    avg_wake = sum([float(m.get("wakeTime", 0)) for m in group_members]) / num_members
+    
+    room_profile = {
+        **admin,
+        "students": group_members,
+        "interests": group.get("preferences", admin.get("interests", "")),
+        "cleanliness": avg_clean,
+        "socialScene": avg_social,
+        "sleepTime": avg_sleep,
+        "wakeTime": avg_wake
+    }
+    
+    for req in pending_requests:
+        student = await student_service.get_by_reg_no(req["studentRegNo"])
+        if not student: continue
+        
+        old_compat = req.get("compatibility") or {}
+        
+        breakdown = old_compat.get("breakdown") or {}
+        
+        stored_text_score = breakdown.get("interestsScore", 0.5)
+        
+        match_data = update_total_compatibility(student, room_profile, stored_text_score)
+        
+        await db["group_requests"].update_one(
+            {"_id": req["_id"]},
+            {"$set": {"compatibility": match_data}}
+        )
 
 
 def _render_email_action_page(message: str, *, is_error: bool, status_code: int) -> HTMLResponse:
@@ -99,6 +164,8 @@ async def _process_group_request_action(
 
         await student_service.set_group(student["firebaseUID"], updated_group["id"])
         await request_service.delete_all_for_student(student["regNo"])
+
+        await _recalculate_group_pending_requests(db, updated_group["id"])
 
         if student.get("email"):
             mail_args = {
@@ -201,8 +268,34 @@ async def request_join_group(
         raise HTTPException(status_code=400, detail=str(exc))
 
     created_request = await request_service.create_request(id, student["regNo"])
-    return {"message": "Request sent successfully", "request": serialize_for_api(created_request)}
+    
+    match_data = None
+    if admin:
+        member_uids = group.get("studentUids", [])
+        if not member_uids:
+            member_uids = [admin.get("firebaseUID")]
+            
+        group_members = await student_service.list_by_uids(member_uids)
+        
+        room_profile = {
+            **admin, 
+            "students": group_members,
+            "interests": group.get("preferences", admin.get("interests", "")) 
+        }
+        
+        match_data = get_total_compatibility_initial(student, room_profile)
+        
+        request_db_id = created_request.get("_id") if isinstance(created_request, dict) else created_request.id
+        await db["group_requests"].update_one(
+            {"_id": request_db_id},
+            {"$set": {"compatibility": match_data}}
+        )
 
+    response_request = serialize_for_api(created_request)
+    if match_data:
+        response_request["compatibility"] = match_data
+
+    return {"message": "Request sent successfully", "request": response_request}
 
 
 
@@ -251,4 +344,3 @@ async def email_action(token: str, background_tasks: BackgroundTasks):
         else "Request removed successfully."
     )
     return _render_email_action_page(success_message, is_error=False, status_code=200)
-
