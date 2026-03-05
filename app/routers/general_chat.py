@@ -5,77 +5,63 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database import get_database
 from app.services.student_service import StudentService
+from app.models.bunk import GeneralMessage 
 
 router = APIRouter(prefix="/generalChat", tags=["generalChat"])
 
 class Room:
-    def __init__(self, room_id: str, hostel_type: str):
+    def __init__(self, room_id: str):
         self.room_id = room_id
-        self.hostel_type = hostel_type
         self.connections: dict[WebSocket, dict] = {}
-    
-    @property
-    def is_full(self) -> bool:
-        return len(self.connections) >= 15
 
 class ConnectionManager:
     def __init__(self):
         self.rooms: dict[str, Room] = {}
         self.ws_to_room: dict[WebSocket, str] = {}
-        
         self.active_users: dict[str, WebSocket] = {}
 
-    def get_room_stats(self, hostel_type: str) -> list[dict]:
+    def get_all_room_stats(self) -> list[dict]:
+        """Returns the user count for all active rooms."""
         stats = []
-        for room in self.rooms.values():
-            if room.hostel_type == hostel_type:
-                stats.append({
-                    "room_id": room.room_id,
-                    "user_count": len(room.connections),
-                    "is_full": room.is_full
-                })
-        return sorted(stats, key=lambda x: int(x["room_id"].split('-')[1]))
+        for room_id, room in self.rooms.items():
+            stats.append({
+                "room_id": room_id,
+                "user_count": len(room.connections)
+            })
+        return stats
 
-    async def broadcast_stats(self, hostel_type: str):
-        stats = self.get_room_stats(hostel_type)
-        message = {"type": "room_stats", "rooms": stats}
+    async def broadcast_stats(self):
+        """Broadcasts global room stats to EVERY connected user."""
+        stats = self.get_all_room_stats()
+        message = {"type": "room_stats", "rooms": stats} 
         
         for room in self.rooms.values():
-            if room.hostel_type == hostel_type:
-                for connection in room.connections.keys():
+            for connection in room.connections.keys():
+                try:
                     await connection.send_json(message)
+                except Exception:
+                    pass # Ignore if connection is dropping
 
     async def connect(self, websocket: WebSocket, user_info: dict, hostel_type: str) -> str:
         await websocket.accept()
         
         self.active_users[user_info["regNo"]] = websocket
         
-        available_room = None
-        for room in self.rooms.values():
-            if room.hostel_type == hostel_type and not room.is_full:
-                available_room = room
-                break
+        # Room ID is simply the hostel type itself (e.g., "MH" or "LH")
+        room_id = hostel_type 
         
-        if not available_room:
-            room_num = 1
-            while f"{hostel_type}-{room_num}" in self.rooms:
-                room_num += 1
-                
-            room_id = f"{hostel_type}-{room_num}"
-            available_room = Room(room_id, hostel_type)
-            self.rooms[room_id] = available_room
+        if room_id not in self.rooms:
+            self.rooms[room_id] = Room(room_id)
         
-        available_room.connections[websocket] = user_info
-        self.ws_to_room[websocket] = available_room.room_id
-        return available_room.room_id
+        self.rooms[room_id].connections[websocket] = user_info
+        self.ws_to_room[websocket] = room_id
+        return room_id
 
-    def disconnect(self, websocket: WebSocket) -> tuple[str | None, str | None]:
+    def disconnect(self, websocket: WebSocket) -> str | None:
         room_id = self.ws_to_room.get(websocket)
-        hostel_type = None
         
         if room_id and room_id in self.rooms:
             room = self.rooms[room_id]
-            hostel_type = room.hostel_type
             
             user_info = room.connections.get(websocket)
             if user_info and user_info["regNo"] in self.active_users:
@@ -88,48 +74,39 @@ class ConnectionManager:
             if len(room.connections) == 0:
                 del self.rooms[room_id]
                 
-        return room_id, hostel_type
-
-    async def switch_room(self, websocket: WebSocket, target_room_id: str, user_info: dict, hostel_type: str) -> bool:
-        target_room = self.rooms.get(target_room_id)
-        
-        if not target_room or target_room.hostel_type != hostel_type:
-            await websocket.send_json({"type": "error", "message": "Room does not exist."})
-            return False
-        if target_room.is_full:
-            await websocket.send_json({"type": "error", "message": f"{target_room_id} is currently full (15/15)."})
-            return False
-
-        old_room_id = self.ws_to_room.get(websocket)
-        if old_room_id and old_room_id in self.rooms:
-            del self.rooms[old_room_id].connections[websocket]
-            
-            await self.broadcast_to_room(old_room_id, {
-                "type": "system",
-                "message": f"🚪 {user_info['name']} moved to another room.",
-                "room_id": old_room_id,
-                "user_count": len(self.rooms[old_room_id].connections),
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            })
-            
-            if len(self.rooms[old_room_id].connections) == 0:
-                del self.rooms[old_room_id]
-
-        target_room.connections[websocket] = user_info
-        self.ws_to_room[websocket] = target_room_id
-        return True
+        return room_id
 
     async def broadcast_to_room(self, room_id: str, message_data: dict):
         if room_id in self.rooms:
-            room = self.rooms[room_id]
-            if message_data.get("type") == "system":
-                message_data["room_id"] = room_id
-                message_data["user_count"] = len(room.connections)
-            
-            for connection in room.connections.keys():
-                await connection.send_json(message_data)
+            # Create a list of connections to avoid dict size changing during iteration
+            connections = list(self.rooms[room_id].connections.keys())
+            for connection in connections:
+                try:
+                    await connection.send_json(message_data)
+                except RuntimeError:
+                    # Connection dropped unexpectedly, disconnect them safely
+                    self.disconnect(connection)
 
 manager = ConnectionManager()
+
+@router.get("/history/{room_id}")
+async def get_room_history(
+    room_id: str, 
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """Fetch the full chat history for a specific room."""
+    cursor = db["general_messages"].find({"room_id": room_id}).sort("timestamp", 1)
+    
+    messages = await cursor.to_list(length=None) 
+    
+    for msg in messages:
+        msg["id"] = str(msg["_id"])
+        del msg["_id"]
+        # Ensure UTC timezone is attached before sending to frontend
+        if "timestamp" in msg and msg["timestamp"].tzinfo is None:
+            msg["timestamp"] = msg["timestamp"].replace(tzinfo=timezone.utc)
+        
+    return messages
 
 @router.websocket("/ws/{reg_no}")
 async def websocket_endpoint(
@@ -162,13 +139,9 @@ async def websocket_endpoint(
 
     room_id = await manager.connect(websocket, user_info, hostel_type)
     
-    await manager.broadcast_to_room(room_id, {
-        "type": "system",
-        "message": f"👋 {user_info['name']} joined.",
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    })
-    
-    await manager.broadcast_stats(hostel_type)
+    await websocket.send_json({"type": "welcome", "room_id": room_id})
+    # Update active room counts for everyone
+    await manager.broadcast_stats()
     
     try:
         while True:
@@ -179,39 +152,36 @@ async def websocket_endpoint(
                 continue
 
             action = data.get("action")
+            text_content = data.get("message", "").strip()
             current_room = manager.ws_to_room.get(websocket)
 
-            if action == "chat" and current_room:
-                await manager.broadcast_to_room(current_room, {
+            # Ignore empty messages
+            if action == "chat" and current_room and text_content:
+                
+                # 1. Validate data using Pydantic Schema
+                new_message = GeneralMessage(
+                    room_id=current_room,
+                    sender_name=user_info["name"],
+                    sender_reg_no=user_info["regNo"],
+                    message=text_content
+                )
+                
+                # Convert to dict for MongoDB (exclude 'id' so Mongo creates '_id')
+                db_message = new_message.model_dump(exclude={"id"})
+                result = await db["general_messages"].insert_one(db_message)
+
+                # 2. Broadcast to room
+                broadcast_payload = {
+                    "id": str(result.inserted_id),
                     "type": "chat",
-                    "sender_name": user_info["name"],
-                    "sender_reg_no": user_info["regNo"],
-                    "room_id": current_room,
-                    "message": data.get("message"),
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                })
+                    "sender_name": new_message.sender_name,
+                    "sender_reg_no": new_message.sender_reg_no,
+                    "room_id": new_message.room_id,
+                    "message": new_message.message,
+                    "timestamp": new_message.timestamp.isoformat()
+                }
+                await manager.broadcast_to_room(current_room, broadcast_payload)
                 
-            elif action == "switch_room":
-                target_room = data.get("target_room")
-                if target_room == current_room:
-                    continue
-                
-                success = await manager.switch_room(websocket, target_room, user_info, hostel_type)
-                if success:
-                    await manager.broadcast_to_room(target_room, {
-                        "type": "system",
-                        "message": f"👋 {user_info['name']} joined the room.",
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    })
-                    await manager.broadcast_stats(hostel_type)
-            
     except WebSocketDisconnect:
-        disconnected_room_id, d_hostel_type = manager.disconnect(websocket)
-        if disconnected_room_id:
-            await manager.broadcast_to_room(disconnected_room_id, {
-                "type": "system",
-                "message": f"🚪 {user_info['name']} disconnected.",
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            })
-        if d_hostel_type:
-            await manager.broadcast_stats(d_hostel_type)
+        manager.disconnect(websocket)
+        await manager.broadcast_stats()
