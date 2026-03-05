@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -67,3 +67,13 @@ class DirectMessage(BaseModel):
     receiverRegNo: str
     message: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class GeneralMessage(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: Optional[str] = Field(default=None, alias="_id")
+    room_id: str
+    sender_name: str
+    sender_reg_no: str
+    message: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
