@@ -4,26 +4,25 @@
 <!-- Club Logo -->
 <br />
 <div align="center">
-  <a href="https://github.com/vinnovateit/repo_name">
+  <a href="https://github.com/vinnovateit/BunkBuddies-Backend">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/vinnovateit/.github/main/assets/whiteLogoViit.svg">
       <img alt="VinnovateIT Logo" src="https://raw.githubusercontent.com/vinnovateit/.github/main/assets/blackLogoViit.svg" width="200">
     </picture>
   </a>
 
-<h3 align="center">project_title</h3>
+<h3 align="center">BunkBuddies</h3>
 
   <p align="center">
-    project_description
-    <br />
-    <a href="https://github.com/vinnovateit/repo_name"><strong>Explore the docs »</strong></a>
+    Web application for finding roomates during VIT hostel counselling
     <br />
     <br />
-    <a href="https://github.com/vinnovateit/repo_name">Visit</a>
+    <br />
+    <a href="https://github.com/vinnovateit/BunkBuddies-Backend">Visit</a>
     &middot;
-    <a href="https://github.com/vinnovateit/repo_name/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://github.com/vinnovateit/BunkBuddies-Backend/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     &middot;
-    <a href="https://github.com/vinnovateit/repo_name/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/vinnovateit/BunkBuddies-Backend/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
   </p>
 </div>
 
@@ -60,11 +59,12 @@
 
 <!-- Put the PROJECT LOGO here -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/vinnovateit/.github/main/assets/whiteLogoViit.svg">
-  <img alt="Project Logo" src="https://raw.githubusercontent.com/vinnovateit/.github/main/assets/blackLogoViit.svg" width="200" align="right">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/bb_logo_white.svg">
+  <img alt="Project Logo" src=".github/assets/bb_logo.svg" width="200" align="right">
 </picture>
 
-Do a search and replace with your text editor for the following: `repo_name`, `project_title`, `project_description`, `project_license`
+
+BunkBuddies is a web application developed by VinnovateIT that helps in selecting roommate for VIT hostel counseling. It leverages Natural Language Processing to generate compatibility scores and rank potential roommates. It features private and public chats to facilitate seamless communication between VIT students.
 
 <!-- Put appropriate SCREENSHOTS here
 Use width modifier to control size
@@ -73,74 +73,65 @@ Use wisely: don't overfill & don't use too heavy imgs
 <details>
   <summary><b>Screenshots</b></summary>
   
-  | Landing page | Login |
+  | Dashboard | Create Room |
   | :--------------: | :--------: |
-  | <img width="60%" alt="Home screen" src="https://raw.githubusercontent.com/vinnovateit/.github/main/assets/whiteLogoViit.svg"> | <img width="60%" alt="Login page" src="https://raw.githubusercontent.com/vinnovateit/.github/main/assets/whiteLogoViit.svg"> |
-  | **Dashboard | **Something** |
-  | <img width="60%" alt="Donation page" src="https://raw.githubusercontent.com/vinnovateit/.github/main/assets/whiteLogoViit.svg"> | <img width="60%" alt="pwa flow" src="https://raw.githubusercontent.com/vinnovateit/.github/main/assets/whiteLogoViit.svg"> |
+  | <img width="60%" alt="Dashboard" src=".github/assets/dashboard.jpeg"> | <img width="60%" alt="Create Room" src=".github/assets/create_room.jpeg"> |
+  | **Explore Rooms** | **Chat** |
+  | <img width="60%" alt="Explore Rooms" src=".github/assets/explore_rooms.jpeg"> | <img width="60%" alt="Chat" src=".github/assets/chat.jpeg"> |
 
 </details>
 
 ### Built With
 
-[![Next][Next.js]][Next-url]
-[![React][React.js]][React-url]
-[![Vue][Vue.js]][Vue-url]
-[![Angular][Angular.io]][Angular-url]
-[![Svelte][Svelte.dev]][Svelte-url]
-[![Laravel][Laravel.com]][Laravel-url]
-[![Laravel][Laravel.com]][Laravel-url]
-[![Bootstrap][Bootstrap.com]][Bootstrap-url]
-[![JQuery][JQuery.com]][JQuery-url]
-
-
-<!-- ROADMAP -->
-## Roadmap
-
-- [ ] Feature 1
-- [ ] Feature 2
-- [ ] Feature 3
-    - [ ] Nested Feature
-
-See the [open issues](https://github.com/vinnovateit/repo_name/issues) for a full list of proposed features (and known issues).
-
-
+[![Python][Python.org]][Python-url]
+[![FastAPI][FastAPI.tiangolo.com]][FastAPI-url]
+[![MongoDB][MongoDB.com]][MongoDB-url]
+[![HTML5][HTML5.com]][HTML5-url]
 
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
+Before you begin, ensure you have the following installed on your system:
+
+* **Python (3.8 or higher):** Required to run the backend and NLP compatibility models.
+* **MongoDB:** A local installation or an active MongoDB Atlas URI for the database.
+* **Git:** For cloning the repository and version control.
+* A modern web browser (Chrome, Edge, Firefox, etc.).
 
 ### Installation
+1. Clone the repo
+   ```sh
+   git clone https://github.com/vinnovateit/BunkBuddies-Backend.git
+   ```
+2. Install the required libraries using the requirements.txt
+   ```sh
+   pip install -r requirements.txt
+   ```
+3. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) and create a cluster and get a connection string URL for it and store it in the .env file
+   ```sh
+   MONGODB_URI = YOUR-CONNECTION-URL-HERE
+   ```
+4. Go to [Google Cloud Console](https://console.cloud.google.com/) and get a Google client ID and the secret key for it and store them in the .env file
+   ```sh
+   GOOGLE_CLIENT_ID = YOUR-GOOGLE-CLIENT-ID-HERE
+   GOOGLE_CLIENT_SECRET = YOUR-GOOGLE-SECRET-KEY-HERE
+   ```
+5. Enter your full gmail address in mail username and mail from and Go to [Google Security Settings](https://myaccount.google.com/security) and generate a 16 letter App Password and store it in the .env file
+   ```sh
+   MAIL_USERNAME = your_mail@gmail.com
+   MAIL_FROM = your_mail@gmail.com
+   MAIL_PASSWORD = 16-Letter-App-Password
+   ```
+6. Go to [Hugging Face](https://huggingface.co/settings/tokens) and generate a token API Key and store it in .env file
+   ```sh
+   HUGGINGFACE_API_KEY = hf-your-long-token-here
+   ```
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
-   ```sh
-   git clone https://github.com/vinnovateit/repo_name.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
-5. Change git remote url to avoid accidental pushes to base project
-   ```sh
-   git remote set-url origin vinnovateit/repo_name
-   git remote -v # confirm the changes
-   ```
 
 
 
@@ -149,16 +140,14 @@ This is an example of how to list things you need to use the software and how to
 <!-- USAGE - REMOVE IF NOT NEEDED -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://github.com/vinnovateit/)_
+BunkBuddies uses natural language processing to match you with the most compatible roommates based on your living habits, schedules, and lifestyle preferences. It streamlines the hostel counseling experience by allowing you to filter rooms by specific blocks and ac prefrences. It also verifies student credentials and facilitates secure in-app messaging, allowing you to connect confidently before making a final decision.
 
 
 
 ### Top contributors:
 
-<a href="https://github.com/vinnovateit/repo_name/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=vinnovateit/repo_name" alt="contrib.rocks image" />
+<a href="https://github.com/vinnovateit/BunkBuddies-Backend/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=vinnovateit/BunkBuddies-Backend" alt="contrib.rocks image" />
 </a>
 
 
@@ -168,9 +157,8 @@ _For more examples, please refer to the [Documentation](https://github.com/vinno
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-* []()
-* []()
-* []()
+- [VinnovateIT Family](https://vinnovateit.com) for mentoring and resources
+- A huge thank you to the open-source community behind the core stack: [FastAPI](https://fastapi.tiangolo.com/) & [Pydantic](https://docs.pydantic.dev/) (Backend), [Motor](https://motor.readthedocs.io/)/[PyMongo](https://pymongo.readthedocs.io/) (Database), [WebSockets](https://websockets.readthedocs.io/) (Real-time features), and [Authlib](https://docs.authlib.org/)/[PyJWT](https://pyjwt.readthedocs.io/) (Security).
 
 
 <p align="center">
@@ -180,19 +168,11 @@ _For more examples, please refer to the [Documentation](https://github.com/vinno
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[Next.js]: https://img.shields.io/badge/next.js-000000?&logo=nextdotjs&logoColor=white
-[Next-url]: https://nextjs.org/
-[React.js]: https://img.shields.io/badge/React-20232A?&logo=react&logoColor=61DAFB
-[React-url]: https://reactjs.org/
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?&logo=vuedotjs&logoColor=4FC08D
-[Vue-url]: https://vuejs.org/
-[Angular.io]: https://img.shields.io/badge/Angular-DD0031?&logo=angular&logoColor=white
-[Angular-url]: https://angular.io/
-[Svelte.dev]: https://img.shields.io/badge/Svelte-4A4A55?&logo=svelte&logoColor=FF3E00
-[Svelte-url]: https://svelte.dev/
-[Laravel.com]: https://img.shields.io/badge/Laravel-FF2D20?&logo=laravel&logoColor=white
-[Laravel-url]: https://laravel.com
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
-[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com 
+[Python.org]: https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54
+[Python-url]: https://www.python.org/
+[FastAPI.tiangolo.com]: https://img.shields.io/badge/FastAPI-009485?style=for-the-badge&logo=fastapi&logoColor=white
+[FastAPI-url]: https://fastapi.tiangolo.com/
+[MongoDB.com]: https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white
+[MongoDB-url]: https://www.mongodb.com/
+[HTML5.com]: https://img.shields.io/badge/html5-%23E34F26.svg?style=for-the-badge&logo=html5&logoColor=white
+[HTML5-url]: https://developer.mozilla.org/en-US/docs/Web/HTML
