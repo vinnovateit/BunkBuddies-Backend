@@ -1,16 +1,47 @@
 import json
 from datetime import datetime, timezone
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from bson import ObjectId 
+from bson import ObjectId
 
 from app.database import get_database
 from app.services.student_service import StudentService
+from app.services import UserService
+from app.auth.dependencies import get_current_auth_user
+from app.auth.jwt import decode_access_token
+from app.schemas import CurrentAuthUser
 
 router = APIRouter(
     prefix="/dm",
     tags=["Direct Messaging"]
 )
+
+
+async def _caller_reg_no(db: AsyncIOMotorDatabase, auth: CurrentAuthUser) -> str:
+    """Resolve the authenticated caller's own registration number from their token."""
+    me = await StudentService(db).get_by_uid(auth.uid)
+    if not me or not me.get("regNo"):
+        raise HTTPException(status_code=404, detail="Student profile not found")
+    return me["regNo"]
+
+
+async def _reg_no_from_token(db: AsyncIOMotorDatabase, token: str | None) -> str | None:
+    """Validate a JWT (passed as a WebSocket query param) and return the caller's regNo, else None."""
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    user = await UserService(db).get_user_by_id(user_id)
+    if not user or not user.google_id:
+        return None
+    student = await StudentService(db).get_by_uid(user.google_id)
+    if not student or not student.get("regNo"):
+        return None
+    return student["regNo"]
 
 async def can_users_chat(db: AsyncIOMotorDatabase, reg_no_1: str, reg_no_2: str) -> bool:
     student_service = StudentService(db)
@@ -40,7 +71,13 @@ async def can_users_chat(db: AsyncIOMotorDatabase, reg_no_1: str, reg_no_2: str)
     return False
 
 @router.get("/contacts/{reg_no}")
-async def get_dm_contacts(reg_no: str, db: AsyncIOMotorDatabase = Depends(get_database)):
+async def get_dm_contacts(
+    reg_no: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    auth: CurrentAuthUser = Depends(get_current_auth_user),
+):
+    if reg_no != await _caller_reg_no(db, auth):
+        raise HTTPException(status_code=403, detail="You can only view your own contacts.")
     student_service = StudentService(db)
     me = await student_service.get_by_reg_no(reg_no)
     if not me: raise HTTPException(status_code=404, detail="Student not found")
@@ -117,10 +154,13 @@ dm_manager = DMConnectionManager()
 
 @router.get("/history/{my_reg_no}/{target_reg_no}")
 async def get_chat_history(
-    my_reg_no: str, 
-    target_reg_no: str, 
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    my_reg_no: str,
+    target_reg_no: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    auth: CurrentAuthUser = Depends(get_current_auth_user),
 ):
+    if my_reg_no != await _caller_reg_no(db, auth):
+        raise HTTPException(status_code=403, detail="You can only view your own conversations.")
     if not await can_users_chat(db, my_reg_no, target_reg_no):
         raise HTTPException(status_code=403, detail="Permission denied.")
 
@@ -149,10 +189,18 @@ async def get_chat_history(
 
 @router.websocket("/ws/{my_reg_no}")
 async def dm_websocket_endpoint(
-    websocket: WebSocket, 
-    my_reg_no: str, 
+    websocket: WebSocket,
+    my_reg_no: str,
+    token: str | None = None,
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
+    # Authenticate the socket: the regNo is taken from a validated token, and the
+    # path value must match it. An unauthenticated or mismatched client is rejected.
+    authed_reg_no = await _reg_no_from_token(db, token)
+    if not authed_reg_no or authed_reg_no != my_reg_no:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     if my_reg_no in dm_manager.active_users:
         dm_manager.disconnect(my_reg_no)
 
@@ -161,12 +209,17 @@ async def dm_websocket_endpoint(
     try:
         while True:
             raw_data = await websocket.receive_text()
-            data = json.loads(raw_data)
-            
+            try:
+                data = json.loads(raw_data)
+            except json.JSONDecodeError:
+                continue
+
             target_reg_no = data.get("targetRegNo")
             text_data = data.get("message")
-            
-            if not target_reg_no or not text_data:
+
+            # targetRegNo must be a plain string: this prevents a Mongo operator
+            # object (e.g. {"$ne": null}) from reaching the query.
+            if not isinstance(target_reg_no, str) or not isinstance(text_data, str) or not text_data:
                 continue
 
             if not await can_users_chat(db, my_reg_no, target_reg_no):
